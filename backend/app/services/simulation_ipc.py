@@ -1,11 +1,11 @@
 """
-模拟IPC通信模块
-用于Flask后端和模拟脚本之间的进程间通信
+Simulation IPC module.
+File-based inter-process communication between the Flask backend and the simulation subprocess.
 
-通过文件系统实现简单的命令/响应模式：
-1. Flask写入命令到 commands/ 目录
-2. 模拟脚本轮询命令目录，执行命令并写入响应到 responses/ 目录
-3. Flask轮询响应目录获取结果
+Protocol:
+1. Flask writes a command JSON file to the commands/ directory.
+2. The simulation script polls that directory, executes the command, and writes the response to responses/.
+3. Flask polls the responses/ directory and reads the result.
 """
 
 import os
@@ -23,14 +23,14 @@ logger = get_logger('mirofish.simulation_ipc')
 
 
 class CommandType(str, Enum):
-    """命令类型"""
-    INTERVIEW = "interview"           # 单个Agent采访
-    BATCH_INTERVIEW = "batch_interview"  # 批量采访
-    CLOSE_ENV = "close_env"           # 关闭环境
+    """IPC command types."""
+    INTERVIEW = "interview"              # single-agent interview
+    BATCH_INTERVIEW = "batch_interview"  # batch interview
+    CLOSE_ENV = "close_env"             # shut down environment
 
 
 class CommandStatus(str, Enum):
-    """命令状态"""
+    """IPC command status."""
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -39,7 +39,7 @@ class CommandStatus(str, Enum):
 
 @dataclass
 class IPCCommand:
-    """IPC命令"""
+    """IPC command."""
     command_id: str
     command_type: CommandType
     args: Dict[str, Any]
@@ -65,7 +65,7 @@ class IPCCommand:
 
 @dataclass
 class IPCResponse:
-    """IPC响应"""
+    """IPC response."""
     command_id: str
     status: CommandStatus
     result: Optional[Dict[str, Any]] = None
@@ -94,26 +94,26 @@ class IPCResponse:
 
 class SimulationIPCClient:
     """
-    模拟IPC客户端（Flask端使用）
-    
-    用于向模拟进程发送命令并等待响应
+    Simulation IPC client (Flask side).
+
+    Sends commands to the simulation subprocess and waits for responses.
     """
-    
+
     def __init__(self, simulation_dir: str):
         """
-        初始化IPC客户端
-        
+        Initialise the IPC client.
+
         Args:
-            simulation_dir: 模拟数据目录
+            simulation_dir: Simulation data directory
         """
         self.simulation_dir = simulation_dir
         self.commands_dir = os.path.join(simulation_dir, "ipc_commands")
         self.responses_dir = os.path.join(simulation_dir, "ipc_responses")
         
-        # 确保目录存在
+        # Ensure directories exist
         os.makedirs(self.commands_dir, exist_ok=True)
         os.makedirs(self.responses_dir, exist_ok=True)
-    
+
     def send_command(
         self,
         command_type: CommandType,
@@ -122,19 +122,19 @@ class SimulationIPCClient:
         poll_interval: float = 0.5
     ) -> IPCResponse:
         """
-        发送命令并等待响应
-        
+        Send a command and wait for the response.
+
         Args:
-            command_type: 命令类型
-            args: 命令参数
-            timeout: 超时时间（秒）
-            poll_interval: 轮询间隔（秒）
-            
+            command_type: Command type
+            args: Command arguments
+            timeout: Timeout in seconds
+            poll_interval: Polling interval in seconds
+
         Returns:
             IPCResponse
-            
+
         Raises:
-            TimeoutError: 等待响应超时
+            TimeoutError: Response not received within the timeout
         """
         command_id = str(uuid.uuid4())
         command = IPCCommand(
@@ -143,7 +143,7 @@ class SimulationIPCClient:
             args=args
         )
         
-        # 写入命令文件
+        # Write command file
         command_file = os.path.join(self.commands_dir, f"{command_id}.json")
         with open(command_file, 'w', encoding='utf-8') as f:
             json.dump(command.to_dict(), f, ensure_ascii=False, indent=2)

@@ -2,6 +2,44 @@
 
 ---
 
+## Session 4 — 2026-03-15
+
+### What was accomplished
+
+Created `TASKS/` folder with 9 numbered task files covering Phase 1 cleanup
+through Phase 3.
+
+**Task 001 — README and branding cleanup (Phase 1 Step 12)**: COMPLETE
+- Rewrote `README.md` for Redline — 3-stage workflow, provider-agnostic LLM setup
+- Simplified `README-EN.md` to a pointer (project is English-first now)
+- `docker-compose.yml`: `mirofish` → `redline`, updated image ref
+- `.github/workflows/docker-image.yml`: image name → `redlinefish`
+- `Home.vue`: replaced MiroFish logo with styled "R_" text mark, updated GitHub
+  link to `Tyler-Irving/RedlineFish`
+- `package.json`: name → `redline`, description updated
+
+**Task 003 — Delete dead view files**: COMPLETE
+- Deleted 8 unreachable files: `MainView.vue`, `Process.vue`, `SimulationView.vue`,
+  `SimulationRunView.vue`, `ReportView.vue`, `InteractionView.vue`,
+  `Step1GraphBuild.vue`, `Step2EnvSetup.vue`
+- Frontend build passes cleanly after deletion
+
+**Task 005 — LLM client provider-agnostic**: COMPLETE (verification only)
+- `grep "from openai import OpenAI" backend/app/services/` → zero results
+- `grep "qwen|Qwen" backend/ --include="*.py"` → zero results
+
+### Phase 1 status
+
+All code tasks complete. Only remaining Phase 1 gate is Task 002 (manual E2E
+browser test of Upload → Simulate → Explore flow).
+
+### Next steps
+
+- Task 002 — manual E2E browser test (`npm run dev` + browser)
+- Tasks 004, 006–009 are Phase 2/3
+
+---
+
 ## Session 3 — 2026-03-15
 
 ### What was accomplished
