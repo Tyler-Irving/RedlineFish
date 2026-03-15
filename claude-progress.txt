@@ -1,0 +1,27 @@
+Session 4 — 2026-03-15
+Branch: redline/phase1-strip
+
+## Completed this session
+
+- Created TASKS/ folder with 9 task files (001–009)
+- **Task 001 COMPLETE** — README and branding cleanup
+- **Task 003 COMPLETE** — Deleted 8 dead view/component files
+- **Task 005 COMPLETE** — Verified LLM client is fully provider-agnostic (no OpenAI imports in services, no Qwen hardcoding)
+
+## Task Queue
+
+1. ~~001~~ ✓  2. 002 — E2E browser test — NOT STARTED (manual)
+3. ~~003~~ ✓  4. 004 — English UI labels — Phase 2
+5. ~~005~~ ✓  6. 006 — Agent count defaults — Phase 2
+7. 007 — Simulation round defaults — Phase 2
+8. 008 — Cleanup redundant flags — Phase 3
+9. 009 — Frontend styling polish — Phase 2
+
+## Phase 1 status
+
+All code tasks complete. Only remaining Phase 1 gate is Task 002 (manual E2E browser test).
+All other tasks are Phase 2+.
+
+## Next action
+
+Task 002 — manual E2E browser test. Requires `npm run dev` and browser testing.
