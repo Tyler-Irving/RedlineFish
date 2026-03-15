@@ -2,7 +2,7 @@ import service, { requestWithRetry } from './index'
 
 /**
  * 创建模拟
- * @param {Object} data - { project_id, graph_id?, enable_twitter?, enable_reddit? }
+ * @param {Object} data - { project_id, graph_id?, enable_twitter? }
  */
 export const createSimulation = (data) => {
   return requestWithRetry(() => service.post('/api/simulation/create', data), 3, 1000)
@@ -35,18 +35,18 @@ export const getSimulation = (simulationId) => {
 /**
  * 获取模拟的 Agent Profiles
  * @param {string} simulationId
- * @param {string} platform - 'reddit' | 'twitter'
+ * @param {string} platform - 'twitter'
  */
-export const getSimulationProfiles = (simulationId, platform = 'reddit') => {
+export const getSimulationProfiles = (simulationId, platform = 'twitter') => {
   return service.get(`/api/simulation/${simulationId}/profiles`, { params: { platform } })
 }
 
 /**
  * 实时获取生成中的 Agent Profiles
  * @param {string} simulationId
- * @param {string} platform - 'reddit' | 'twitter'
+ * @param {string} platform - 'twitter'
  */
-export const getSimulationProfilesRealtime = (simulationId, platform = 'reddit') => {
+export const getSimulationProfilesRealtime = (simulationId, platform = 'twitter') => {
   return service.get(`/api/simulation/${simulationId}/profiles/realtime`, { params: { platform } })
 }
 
@@ -111,11 +111,11 @@ export const getRunStatusDetail = (simulationId) => {
 /**
  * 获取模拟中的帖子
  * @param {string} simulationId
- * @param {string} platform - 'reddit' | 'twitter'
+ * @param {string} platform - 'twitter'
  * @param {number} limit - 返回数量
  * @param {number} offset - 偏移量
  */
-export const getSimulationPosts = (simulationId, platform = 'reddit', limit = 50, offset = 0) => {
+export const getSimulationPosts = (simulationId, platform = 'twitter', limit = 50, offset = 0) => {
   return service.get(`/api/simulation/${simulationId}/posts`, {
     params: { platform, limit, offset }
   })

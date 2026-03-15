@@ -793,7 +793,6 @@ const parseInterview = (text) => {
         selectionReason: '',
         questions: [],
         twitterAnswer: '',
-        redditAnswer: '',
         quotes: []
       }
       
@@ -833,34 +832,14 @@ const parseInterview = (text) => {
         }
       }
       
-      // 提取回答 - 分Twitter和Reddit
+      // 提取回答
       const answerMatch = block.match(/\*\*A:\*\*\s*([\s\S]*?)(?=\*\*关键引言|$)/)
       if (answerMatch) {
         const answerText = answerMatch[1].trim()
-        
-        // 分离Twitter和Reddit回答
-        const twitterMatch = answerText.match(/【Twitter平台回答】\n?([\s\S]*?)(?=【Reddit平台回答】|$)/)
-        const redditMatch = answerText.match(/【Reddit平台回答】\n?([\s\S]*?)$/)
-        
+        const twitterMatch = answerText.match(/【Twitter平台回答】\n?([\s\S]*?)$/)
         if (twitterMatch) {
           interview.twitterAnswer = twitterMatch[1].trim()
-        }
-        if (redditMatch) {
-          interview.redditAnswer = redditMatch[1].trim()
-        }
-        
-        // 平台回退逻辑（兼容旧格式：只有一个平台标记的情况）
-        if (!twitterMatch && redditMatch) {
-          // 只有 Reddit 回答，仅在非占位文本时复制为默认显示
-          if (interview.redditAnswer && interview.redditAnswer !== '（该平台未获得回复）') {
-            interview.twitterAnswer = interview.redditAnswer
-          }
-        } else if (twitterMatch && !redditMatch) {
-          if (interview.twitterAnswer && interview.twitterAnswer !== '（该平台未获得回复）') {
-            interview.redditAnswer = interview.twitterAnswer
-          }
-        } else if (!twitterMatch && !redditMatch) {
-          // 没有分平台标记（极旧格式），整体作为回答
+        } else {
           interview.twitterAnswer = answerText
         }
       }
@@ -1292,21 +1271,7 @@ const InterviewDisplay = {
     
     const activeIndex = ref(0)
     const expandedAnswers = ref(new Set())
-    // 为每个问题-回答对维护独立的平台选择状态
-    const platformTabs = reactive({}) // { 'agentIdx-qIdx': 'twitter' | 'reddit' }
-    
-    // 获取某个问题的当前平台选择
-    const getPlatformTab = (agentIdx, qIdx) => {
-      const key = `${agentIdx}-${qIdx}`
-      return platformTabs[key] || 'twitter'
-    }
-    
-    // 设置某个问题的平台选择
-    const setPlatformTab = (agentIdx, qIdx, platform) => {
-      const key = `${agentIdx}-${qIdx}`
-      platformTabs[key] = platform
-    }
-    
+
     const toggleAnswer = (key) => {
       const newSet = new Set(expandedAnswers.value)
       if (newSet.has(key)) {
@@ -1394,8 +1359,8 @@ const InterviewDisplay = {
     }
     
     // 获取某个问题对应的回答
-    const getAnswerForQuestion = (interview, qIdx, platform) => {
-      const answer = platform === 'twitter' ? interview.twitterAnswer : (interview.redditAnswer || interview.twitterAnswer)
+    const getAnswerForQuestion = (interview, qIdx) => {
+      const answer = interview.twitterAnswer
       if (!answer || isPlaceholderText(answer)) return answer || ''
 
       const questionCount = interview.questions?.length || 1
@@ -1410,14 +1375,6 @@ const InterviewDisplay = {
       return qIdx === 0 ? answer : ''
     }
     
-    // 检查某个问题是否有双平台回答（过滤占位文本）
-    const hasMultiplePlatforms = (interview, qIdx) => {
-      if (!interview.twitterAnswer || !interview.redditAnswer) return false
-      const twitterAnswer = getAnswerForQuestion(interview, qIdx, 'twitter')
-      const redditAnswer = getAnswerForQuestion(interview, qIdx, 'reddit')
-      // 两个平台都有真实回答（非占位文本）且内容不同
-      return !isPlaceholderText(twitterAnswer) && !isPlaceholderText(redditAnswer) && twitterAnswer !== redditAnswer
-    }
     
     return () => h('div', { class: 'interview-display' }, [
       // Header Section
@@ -1478,9 +1435,7 @@ const InterviewDisplay = {
             : [props.result.interviews[activeIndex.value]?.question || 'No question available']
           ).map((question, qIdx) => {
             const interview = props.result.interviews[activeIndex.value]
-            const currentPlatform = getPlatformTab(activeIndex.value, qIdx)
-            const answerText = getAnswerForQuestion(interview, qIdx, currentPlatform)
-            const hasDualPlatform = hasMultiplePlatforms(interview, qIdx)
+            const answerText = getAnswerForQuestion(interview, qIdx)
             const expandKey = `${activeIndex.value}-${qIdx}`
             const isExpanded = expandedAnswers.value.has(expandKey)
             const isPlaceholder = isPlaceholderText(answerText)
@@ -1501,29 +1456,6 @@ const InterviewDisplay = {
                 h('div', { class: 'qa-content' }, [
                   h('div', { class: 'qa-answer-header' }, [
                     h('div', { class: 'qa-sender' }, interview?.name || 'Agent'),
-                    // 双平台切换按钮（仅在有真实双平台回答时显示）
-                    hasDualPlatform && h('div', { class: 'platform-switch' }, [
-                      h('button', {
-                        class: ['platform-btn', { active: currentPlatform === 'twitter' }],
-                        onClick: (e) => { e.stopPropagation(); setPlatformTab(activeIndex.value, qIdx, 'twitter') }
-                      }, [
-                        h('svg', { class: 'platform-icon', viewBox: '0 0 24 24', width: 12, height: 12, fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [
-                          h('circle', { cx: '12', cy: '12', r: '10' }),
-                          h('line', { x1: '2', y1: '12', x2: '22', y2: '12' }),
-                          h('path', { d: 'M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z' })
-                        ]),
-                        h('span', {}, '世界1')
-                      ]),
-                      h('button', {
-                        class: ['platform-btn', { active: currentPlatform === 'reddit' }],
-                        onClick: (e) => { e.stopPropagation(); setPlatformTab(activeIndex.value, qIdx, 'reddit') }
-                      }, [
-                        h('svg', { class: 'platform-icon', viewBox: '0 0 24 24', width: 12, height: 12, fill: 'none', stroke: 'currentColor', 'stroke-width': 2 }, [
-                          h('path', { d: 'M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z' })
-                        ]),
-                        h('span', {}, '世界2')
-                      ])
-                    ])
                   ]),
                   h('div', {
                     class: ['qa-text', 'answer-text', { 'placeholder-text': isPlaceholder }],
