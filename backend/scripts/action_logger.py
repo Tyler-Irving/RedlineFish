@@ -6,8 +6,6 @@
     sim_xxx/
     ├── twitter/
     │   └── actions.jsonl    # Twitter 平台动作日志
-    ├── reddit/
-    │   └── actions.jsonl    # Reddit 平台动作日志
     ├── simulation.log       # 主模拟进程日志
     └── run_state.json       # 运行状态（API 查询用）
 """
@@ -27,7 +25,7 @@ class PlatformActionLogger:
         初始化日志记录器
         
         Args:
-            platform: 平台名称 (twitter/reddit)
+            platform: 平台名称 (twitter)
             base_dir: 模拟目录的基础路径
         """
         self.platform = platform
@@ -131,7 +129,6 @@ class SimulationLogManager:
         """
         self.simulation_dir = simulation_dir
         self.twitter_logger: Optional[PlatformActionLogger] = None
-        self.reddit_logger: Optional[PlatformActionLogger] = None
         self._main_logger: Optional[logging.Logger] = None
         
         # 设置主日志
@@ -171,12 +168,6 @@ class SimulationLogManager:
         if self.twitter_logger is None:
             self.twitter_logger = PlatformActionLogger("twitter", self.simulation_dir)
         return self.twitter_logger
-    
-    def get_reddit_logger(self) -> PlatformActionLogger:
-        """获取 Reddit 平台日志记录器"""
-        if self.reddit_logger is None:
-            self.reddit_logger = PlatformActionLogger("reddit", self.simulation_dir)
-        return self.reddit_logger
     
     def log(self, message: str, level: str = "info"):
         """记录主日志"""
