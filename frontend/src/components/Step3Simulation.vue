@@ -582,8 +582,8 @@ const handleNextStep = async () => {
       const reportId = res.data.report_id
       addLog(`✓ 报告生成任务已启动: ${reportId}`)
       
-      // 跳转到报告页面
-      router.push({ name: 'Report', params: { reportId } })
+      // Navigate to Explore stage
+      router.push({ name: 'Explore', params: { reportId } })
     } else {
       addLog(`✗ 启动报告生成失败: ${res.error || '未知错误'}`)
       isGeneratingReport.value = false

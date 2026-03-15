@@ -402,13 +402,11 @@ const props = defineProps({
   systemLogs: Array
 })
 
-const emit = defineEmits(['add-log', 'update-status'])
+const emit = defineEmits(['add-log', 'update-status', 'go-interview'])
 
-// Navigation
+// Navigation — emit event so ExploreView can switch tabs instead of routing
 const goToInteraction = () => {
-  if (props.reportId) {
-    router.push({ name: 'Interaction', params: { reportId: props.reportId } })
-  }
+  emit('go-interview')
 }
 
 // State

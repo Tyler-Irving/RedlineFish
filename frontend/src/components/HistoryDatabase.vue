@@ -401,33 +401,33 @@ const closeModal = () => {
   selectedProject.value = null
 }
 
-// 导航到图谱构建页面（Project）
+// Navigate to Upload stage (project)
 const goToProject = () => {
   if (selectedProject.value?.project_id) {
     router.push({
-      name: 'Process',
+      name: 'Upload',
       params: { projectId: selectedProject.value.project_id }
     })
     closeModal()
   }
 }
 
-// 导航到环境配置页面（Simulation）
+// Navigate to Simulate stage
 const goToSimulation = () => {
   if (selectedProject.value?.simulation_id) {
     router.push({
-      name: 'Simulation',
+      name: 'Simulate',
       params: { simulationId: selectedProject.value.simulation_id }
     })
     closeModal()
   }
 }
 
-// 导航到分析报告页面（Report）
+// Navigate to Explore stage (report)
 const goToReport = () => {
   if (selectedProject.value?.report_id) {
     router.push({
-      name: 'Report',
+      name: 'Explore',
       params: { reportId: selectedProject.value.report_id }
     })
     closeModal()
