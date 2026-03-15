@@ -49,7 +49,7 @@ class AgentAction:
     """Agent动作记录"""
     round_num: int
     timestamp: str
-    platform: str  # twitter / reddit
+    platform: str  # twitter
     agent_id: int
     agent_name: str
     action_type: str  # CREATE_POST, LIKE_POST, etc.
@@ -79,7 +79,6 @@ class RoundSummary:
     end_time: Optional[str] = None
     simulated_hour: int = 0
     twitter_actions: int = 0
-    reddit_actions: int = 0
     active_agents: List[int] = field(default_factory=list)
     actions: List[AgentAction] = field(default_factory=list)
     
@@ -90,7 +89,6 @@ class RoundSummary:
             "end_time": self.end_time,
             "simulated_hour": self.simulated_hour,
             "twitter_actions": self.twitter_actions,
-            "reddit_actions": self.reddit_actions,
             "active_agents": self.active_agents,
             "actions_count": len(self.actions),
             "actions": [a.to_dict() for a in self.actions],
@@ -109,21 +107,16 @@ class SimulationRunState:
     simulated_hours: int = 0
     total_simulation_hours: int = 0
     
-    # 各平台独立轮次和模拟时间（用于双平台并行显示）
+    # Twitter 轮次和模拟时间
     twitter_current_round: int = 0
-    reddit_current_round: int = 0
     twitter_simulated_hours: int = 0
-    reddit_simulated_hours: int = 0
-    
+
     # 平台状态
     twitter_running: bool = False
-    reddit_running: bool = False
     twitter_actions_count: int = 0
-    reddit_actions_count: int = 0
-    
+
     # 平台完成状态（通过检测 actions.jsonl 中的 simulation_end 事件）
     twitter_completed: bool = False
-    reddit_completed: bool = False
     
     # 每轮摘要
     rounds: List[RoundSummary] = field(default_factory=list)
@@ -149,10 +142,7 @@ class SimulationRunState:
         if len(self.recent_actions) > self.max_recent_actions:
             self.recent_actions = self.recent_actions[:self.max_recent_actions]
         
-        if action.platform == "twitter":
-            self.twitter_actions_count += 1
-        else:
-            self.reddit_actions_count += 1
+        self.twitter_actions_count += 1
         
         self.updated_at = datetime.now().isoformat()
     
@@ -165,18 +155,12 @@ class SimulationRunState:
             "simulated_hours": self.simulated_hours,
             "total_simulation_hours": self.total_simulation_hours,
             "progress_percent": round(self.current_round / max(self.total_rounds, 1) * 100, 1),
-            # 各平台独立轮次和时间
             "twitter_current_round": self.twitter_current_round,
-            "reddit_current_round": self.reddit_current_round,
             "twitter_simulated_hours": self.twitter_simulated_hours,
-            "reddit_simulated_hours": self.reddit_simulated_hours,
             "twitter_running": self.twitter_running,
-            "reddit_running": self.reddit_running,
             "twitter_completed": self.twitter_completed,
-            "reddit_completed": self.reddit_completed,
             "twitter_actions_count": self.twitter_actions_count,
-            "reddit_actions_count": self.reddit_actions_count,
-            "total_actions_count": self.twitter_actions_count + self.reddit_actions_count,
+            "total_actions_count": self.twitter_actions_count,
             "started_at": self.started_at,
             "updated_at": self.updated_at,
             "completed_at": self.completed_at,
@@ -256,17 +240,11 @@ class SimulationRunner:
                 total_rounds=data.get("total_rounds", 0),
                 simulated_hours=data.get("simulated_hours", 0),
                 total_simulation_hours=data.get("total_simulation_hours", 0),
-                # 各平台独立轮次和时间
                 twitter_current_round=data.get("twitter_current_round", 0),
-                reddit_current_round=data.get("reddit_current_round", 0),
                 twitter_simulated_hours=data.get("twitter_simulated_hours", 0),
-                reddit_simulated_hours=data.get("reddit_simulated_hours", 0),
                 twitter_running=data.get("twitter_running", False),
-                reddit_running=data.get("reddit_running", False),
                 twitter_completed=data.get("twitter_completed", False),
-                reddit_completed=data.get("reddit_completed", False),
                 twitter_actions_count=data.get("twitter_actions_count", 0),
-                reddit_actions_count=data.get("reddit_actions_count", 0),
                 started_at=data.get("started_at"),
                 updated_at=data.get("updated_at", datetime.now().isoformat()),
                 completed_at=data.get("completed_at"),
@@ -312,7 +290,7 @@ class SimulationRunner:
     def start_simulation(
         cls,
         simulation_id: str,
-        platform: str = "parallel",  # twitter / reddit / parallel
+        platform: str = "parallel",  # twitter / parallel
         max_rounds: int = None,  # 最大模拟轮数（可选，用于截断过长的模拟）
         enable_graph_memory_update: bool = False,  # 是否将活动更新到Zep图谱
         graph_id: str = None  # Zep图谱ID（启用图谱更新时必需）
@@ -322,7 +300,7 @@ class SimulationRunner:
         
         Args:
             simulation_id: 模拟ID
-            platform: 运行平台 (twitter/reddit/parallel)
+            platform: 运行平台 (twitter/parallel)
             max_rounds: 最大模拟轮数（可选，用于截断过长的模拟）
             enable_graph_memory_update: 是否将Agent活动动态更新到Zep图谱
             graph_id: Zep图谱ID（启用图谱更新时必需）
@@ -387,13 +365,9 @@ class SimulationRunner:
         if platform == "twitter":
             script_name = "run_twitter_simulation.py"
             state.twitter_running = True
-        elif platform == "reddit":
-            script_name = "run_reddit_simulation.py"
-            state.reddit_running = True
         else:
             script_name = "run_parallel_simulation.py"
             state.twitter_running = True
-            state.reddit_running = True
         
         script_path = os.path.join(cls.SCRIPTS_DIR, script_name)
         
@@ -407,9 +381,8 @@ class SimulationRunner:
         # 启动模拟进程
         try:
             # 构建运行命令，使用完整路径
-            # 新的日志结构：
+            # 日志结构：
             #   twitter/actions.jsonl - Twitter 动作日志
-            #   reddit/actions.jsonl  - Reddit 动作日志
             #   simulation.log        - 主进程日志
             
             cmd = [
@@ -479,10 +452,9 @@ class SimulationRunner:
         """监控模拟进程，解析动作日志"""
         sim_dir = os.path.join(cls.RUN_STATE_DIR, simulation_id)
         
-        # 新的日志结构：分平台的动作日志
+        # 动作日志
         twitter_actions_log = os.path.join(sim_dir, "twitter", "actions.jsonl")
-        reddit_actions_log = os.path.join(sim_dir, "reddit", "actions.jsonl")
-        
+
         process = cls._processes.get(simulation_id)
         state = cls.get_run_state(simulation_id)
         
@@ -490,7 +462,6 @@ class SimulationRunner:
             return
         
         twitter_position = 0
-        reddit_position = 0
         
         try:
             while process.poll() is None:  # 进程仍在运行
@@ -500,12 +471,6 @@ class SimulationRunner:
                         twitter_actions_log, twitter_position, state, "twitter"
                     )
                 
-                # 读取 Reddit 动作日志
-                if os.path.exists(reddit_actions_log):
-                    reddit_position = cls._read_action_log(
-                        reddit_actions_log, reddit_position, state, "reddit"
-                    )
-                
                 # 更新状态
                 cls._save_run_state(state)
                 time.sleep(2)
@@ -513,8 +478,6 @@ class SimulationRunner:
             # 进程结束后，最后读取一次日志
             if os.path.exists(twitter_actions_log):
                 cls._read_action_log(twitter_actions_log, twitter_position, state, "twitter")
-            if os.path.exists(reddit_actions_log):
-                cls._read_action_log(reddit_actions_log, reddit_position, state, "reddit")
             
             # 进程结束
             exit_code = process.returncode
@@ -538,9 +501,8 @@ class SimulationRunner:
                 logger.error(f"模拟失败: {simulation_id}, error={state.error}")
             
             state.twitter_running = False
-            state.reddit_running = False
             cls._save_run_state(state)
-            
+
         except Exception as e:
             logger.error(f"监控线程异常: {simulation_id}, error={str(e)}")
             state.runner_status = RunnerStatus.FAILED
@@ -590,7 +552,7 @@ class SimulationRunner:
             log_path: 日志文件路径
             position: 上次读取位置
             state: 运行状态对象
-            platform: 平台名称 (twitter/reddit)
+            platform: 平台名称 (twitter)
             
         Returns:
             新的读取位置
@@ -620,10 +582,6 @@ class SimulationRunner:
                                         state.twitter_completed = True
                                         state.twitter_running = False
                                         logger.info(f"Twitter 模拟已完成: {state.simulation_id}, total_rounds={action_data.get('total_rounds')}, total_actions={action_data.get('total_actions')}")
-                                    elif platform == "reddit":
-                                        state.reddit_completed = True
-                                        state.reddit_running = False
-                                        logger.info(f"Reddit 模拟已完成: {state.simulation_id}, total_rounds={action_data.get('total_rounds')}, total_actions={action_data.get('total_actions')}")
                                     
                                     # 检查是否所有启用的平台都已完成
                                     # 如果只运行了一个平台，只检查那个平台
@@ -644,16 +602,10 @@ class SimulationRunner:
                                         if round_num > state.twitter_current_round:
                                             state.twitter_current_round = round_num
                                         state.twitter_simulated_hours = simulated_hours
-                                    elif platform == "reddit":
-                                        if round_num > state.reddit_current_round:
-                                            state.reddit_current_round = round_num
-                                        state.reddit_simulated_hours = simulated_hours
-                                    
-                                    # 总体轮次取两个平台的最大值
+
                                     if round_num > state.current_round:
                                         state.current_round = round_num
-                                    # 总体时间取两个平台的最大值
-                                    state.simulated_hours = max(state.twitter_simulated_hours, state.reddit_simulated_hours)
+                                    state.simulated_hours = state.twitter_simulated_hours
                                 
                                 continue
                             
@@ -697,20 +649,10 @@ class SimulationRunner:
         """
         sim_dir = os.path.join(cls.RUN_STATE_DIR, state.simulation_id)
         twitter_log = os.path.join(sim_dir, "twitter", "actions.jsonl")
-        reddit_log = os.path.join(sim_dir, "reddit", "actions.jsonl")
-        
-        # 检查哪些平台被启用（通过文件是否存在判断）
         twitter_enabled = os.path.exists(twitter_log)
-        reddit_enabled = os.path.exists(reddit_log)
-        
-        # 如果平台被启用但未完成，则返回 False
         if twitter_enabled and not state.twitter_completed:
             return False
-        if reddit_enabled and not state.reddit_completed:
-            return False
-        
-        # 至少有一个平台被启用且已完成
-        return twitter_enabled or reddit_enabled
+        return twitter_enabled
     
     @classmethod
     def _terminate_process(cls, process: subprocess.Popen, simulation_id: str, timeout: int = 10):
@@ -800,7 +742,6 @@ class SimulationRunner:
         
         state.runner_status = RunnerStatus.STOPPED
         state.twitter_running = False
-        state.reddit_running = False
         state.completed_at = datetime.now().isoformat()
         cls._save_run_state(state)
         
@@ -898,7 +839,7 @@ class SimulationRunner:
         
         Args:
             simulation_id: 模拟ID
-            platform: 过滤平台（twitter/reddit）
+            platform: 过滤平台（twitter）
             agent_id: 过滤Agent
             round_num: 过滤轮次
             
@@ -919,16 +860,6 @@ class SimulationRunner:
                 round_num=round_num
             ))
         
-        # 读取 Reddit 动作文件（根据文件路径自动设置 platform 为 reddit）
-        reddit_actions_log = os.path.join(sim_dir, "reddit", "actions.jsonl")
-        if not platform or platform == "reddit":
-            actions.extend(cls._read_actions_from_file(
-                reddit_actions_log,
-                default_platform="reddit",  # 自动填充 platform 字段
-                platform_filter=platform,
-                agent_id=agent_id,
-                round_num=round_num
-            ))
         
         # 如果分平台文件不存在，尝试读取旧的单一文件格式
         if not actions:
@@ -1015,7 +946,6 @@ class SimulationRunner:
                 rounds[round_num] = {
                     "round_num": round_num,
                     "twitter_actions": 0,
-                    "reddit_actions": 0,
                     "active_agents": set(),
                     "action_types": {},
                     "first_action_time": action.timestamp,
@@ -1024,11 +954,7 @@ class SimulationRunner:
             
             r = rounds[round_num]
             
-            if action.platform == "twitter":
-                r["twitter_actions"] += 1
-            else:
-                r["reddit_actions"] += 1
-            
+            r["twitter_actions"] += 1
             r["active_agents"].add(action.agent_id)
             r["action_types"][action.action_type] = r["action_types"].get(action.action_type, 0) + 1
             r["last_action_time"] = action.timestamp
@@ -1040,8 +966,7 @@ class SimulationRunner:
             result.append({
                 "round_num": round_num,
                 "twitter_actions": r["twitter_actions"],
-                "reddit_actions": r["reddit_actions"],
-                "total_actions": r["twitter_actions"] + r["reddit_actions"],
+                "total_actions": r["twitter_actions"],
                 "active_agents_count": len(r["active_agents"]),
                 "active_agents": list(r["active_agents"]),
                 "action_types": r["action_types"],
@@ -1072,19 +997,14 @@ class SimulationRunner:
                     "agent_name": action.agent_name,
                     "total_actions": 0,
                     "twitter_actions": 0,
-                    "reddit_actions": 0,
                     "action_types": {},
                     "first_action_time": action.timestamp,
                     "last_action_time": action.timestamp,
                 }
-            
+
             stats = agent_stats[agent_id]
             stats["total_actions"] += 1
-            
-            if action.platform == "twitter":
-                stats["twitter_actions"] += 1
-            else:
-                stats["reddit_actions"] += 1
+            stats["twitter_actions"] += 1
             
             stats["action_types"][action.action_type] = stats["action_types"].get(action.action_type, 0) + 1
             stats["last_action_time"] = action.timestamp
@@ -1102,11 +1022,9 @@ class SimulationRunner:
         会删除以下文件：
         - run_state.json
         - twitter/actions.jsonl
-        - reddit/actions.jsonl
         - simulation.log
         - stdout.log / stderr.log
         - twitter_simulation.db（模拟数据库）
-        - reddit_simulation.db（模拟数据库）
         - env_status.json（环境状态）
         
         注意：不会删除配置文件（simulation_config.json）和 profile 文件
@@ -1134,12 +1052,11 @@ class SimulationRunner:
             "stdout.log",
             "stderr.log",
             "twitter_simulation.db",  # Twitter 平台数据库
-            "reddit_simulation.db",   # Reddit 平台数据库
             "env_status.json",        # 环境状态文件
         ]
-        
+
         # 要删除的目录列表（包含动作日志）
-        dirs_to_clean = ["twitter", "reddit"]
+        dirs_to_clean = ["twitter"]
         
         # 删除文件
         for filename in files_to_delete:
@@ -1230,7 +1147,6 @@ class SimulationRunner:
                     if state:
                         state.runner_status = RunnerStatus.STOPPED
                         state.twitter_running = False
-                        state.reddit_running = False
                         state.completed_at = datetime.now().isoformat()
                         state.error = "服务器关闭，模拟被终止"
                         cls._save_run_state(state)
@@ -1392,7 +1308,7 @@ class SimulationRunner:
             simulation_id: 模拟ID
 
         Returns:
-            状态详情字典，包含 status, twitter_available, reddit_available, timestamp
+            状态详情字典，包含 status, twitter_available, timestamp
         """
         sim_dir = os.path.join(cls.RUN_STATE_DIR, simulation_id)
         status_file = os.path.join(sim_dir, "env_status.json")
@@ -1400,20 +1316,18 @@ class SimulationRunner:
         default_status = {
             "status": "stopped",
             "twitter_available": False,
-            "reddit_available": False,
             "timestamp": None
         }
-        
+
         if not os.path.exists(status_file):
             return default_status
-        
+
         try:
             with open(status_file, 'r', encoding='utf-8') as f:
                 status = json.load(f)
             return {
                 "status": status.get("status", "stopped"),
                 "twitter_available": status.get("twitter_available", False),
-                "reddit_available": status.get("reddit_available", False),
                 "timestamp": status.get("timestamp")
             }
         except (json.JSONDecodeError, OSError):
@@ -1435,10 +1349,7 @@ class SimulationRunner:
             simulation_id: 模拟ID
             agent_id: Agent ID
             prompt: 采访问题
-            platform: 指定平台（可选）
-                - "twitter": 只采访Twitter平台
-                - "reddit": 只采访Reddit平台
-                - None: 双平台模拟时同时采访两个平台，返回整合结果
+            platform: 指定平台（可选，固定为"twitter"）
             timeout: 超时时间（秒）
 
         Returns:
@@ -1497,10 +1408,7 @@ class SimulationRunner:
         Args:
             simulation_id: 模拟ID
             interviews: 采访列表，每个元素包含 {"agent_id": int, "prompt": str, "platform": str(可选)}
-            platform: 默认平台（可选，会被每个采访项的platform覆盖）
-                - "twitter": 默认只采访Twitter平台
-                - "reddit": 默认只采访Reddit平台
-                - None: 双平台模拟时每个Agent同时采访两个平台
+            platform: 默认平台（可选，固定为"twitter"）
             timeout: 超时时间（秒）
 
         Returns:
@@ -1558,10 +1466,7 @@ class SimulationRunner:
         Args:
             simulation_id: 模拟ID
             prompt: 采访问题（所有Agent使用相同问题）
-            platform: 指定平台（可选）
-                - "twitter": 只采访Twitter平台
-                - "reddit": 只采访Reddit平台
-                - None: 双平台模拟时每个Agent同时采访两个平台
+            platform: 指定平台（可选，固定为"twitter"）
             timeout: 超时时间（秒）
 
         Returns:
@@ -1721,10 +1626,7 @@ class SimulationRunner:
         
         Args:
             simulation_id: 模拟ID
-            platform: 平台类型（reddit/twitter/None）
-                - "reddit": 只获取Reddit平台的历史
-                - "twitter": 只获取Twitter平台的历史
-                - None: 获取两个平台的所有历史
+            platform: 平台类型（固定为"twitter"）
             agent_id: 指定Agent ID（可选，只获取该Agent的历史）
             limit: 每个平台返回数量限制
             
@@ -1736,11 +1638,7 @@ class SimulationRunner:
         results = []
         
         # 确定要查询的平台
-        if platform in ("reddit", "twitter"):
-            platforms = [platform]
-        else:
-            # 不指定platform时，查询两个平台
-            platforms = ["twitter", "reddit"]
+        platforms = ["twitter"]
         
         for p in platforms:
             db_path = os.path.join(sim_dir, f"{p}_simulation.db")

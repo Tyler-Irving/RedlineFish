@@ -199,10 +199,7 @@ class SimulationIPCClient:
         Args:
             agent_id: Agent ID
             prompt: 采访问题
-            platform: 指定平台（可选）
-                - "twitter": 只采访Twitter平台
-                - "reddit": 只采访Reddit平台  
-                - None: 双平台模拟时同时采访两个平台，单平台模拟时采访该平台
+            platform: 指定平台（可选，固定为"twitter"）
             timeout: 超时时间
             
         Returns:
@@ -232,10 +229,7 @@ class SimulationIPCClient:
         
         Args:
             interviews: 采访列表，每个元素包含 {"agent_id": int, "prompt": str, "platform": str(可选)}
-            platform: 默认平台（可选，会被每个采访项的platform覆盖）
-                - "twitter": 默认只采访Twitter平台
-                - "reddit": 默认只采访Reddit平台
-                - None: 双平台模拟时每个Agent同时采访两个平台
+            platform: 默认平台（可选，固定为"twitter"）
             timeout: 超时时间
             
         Returns:

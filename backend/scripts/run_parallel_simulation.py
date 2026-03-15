@@ -1,9 +1,9 @@
 """
-OASIS 双平台并行模拟预设脚本
-同时运行Twitter和Reddit模拟，读取相同的配置文件
+OASIS Twitter 模拟预设脚本
+运行Twitter模拟，读取配置文件
 
 功能特性:
-- 双平台（Twitter + Reddit）并行模拟
+- Twitter 模拟
 - 完成模拟后不立即关闭环境，进入等待命令模式
 - 支持通过IPC接收Interview命令
 - 支持单个Agent采访和批量采访
@@ -12,15 +12,11 @@ OASIS 双平台并行模拟预设脚本
 使用方式:
     python run_parallel_simulation.py --config simulation_config.json
     python run_parallel_simulation.py --config simulation_config.json --no-wait  # 完成后立即关闭
-    python run_parallel_simulation.py --config simulation_config.json --twitter-only
-    python run_parallel_simulation.py --config simulation_config.json --reddit-only
 
 日志结构:
     sim_xxx/
     ├── twitter/
     │   └── actions.jsonl    # Twitter 平台动作日志
-    ├── reddit/
-    │   └── actions.jsonl    # Reddit 平台动作日志
     ├── simulation.log       # 主模拟进程日志
     └── run_state.json       # 运行状态（API 查询用）
 """
@@ -166,7 +162,6 @@ try:
         LLMAction,
         ManualAction,
         generate_twitter_agent_graph,
-        generate_reddit_agent_graph
     )
 except ImportError as e:
     print(f"错误: 缺少依赖 {e}")
@@ -184,24 +179,6 @@ TWITTER_ACTIONS = [
     ActionType.QUOTE_POST,
 ]
 
-# Reddit可用动作（不包含INTERVIEW，INTERVIEW只能通过ManualAction手动触发）
-REDDIT_ACTIONS = [
-    ActionType.LIKE_POST,
-    ActionType.DISLIKE_POST,
-    ActionType.CREATE_POST,
-    ActionType.CREATE_COMMENT,
-    ActionType.LIKE_COMMENT,
-    ActionType.DISLIKE_COMMENT,
-    ActionType.SEARCH_POSTS,
-    ActionType.SEARCH_USER,
-    ActionType.TREND,
-    ActionType.REFRESH,
-    ActionType.DO_NOTHING,
-    ActionType.FOLLOW,
-    ActionType.MUTE,
-]
-
-
 # IPC相关常量
 IPC_COMMANDS_DIR = "ipc_commands"
 IPC_RESPONSES_DIR = "ipc_responses"
@@ -216,24 +193,20 @@ class CommandType:
 
 class ParallelIPCHandler:
     """
-    双平台IPC命令处理器
-    
-    管理两个平台的环境，处理Interview命令
+    Twitter IPC命令处理器
+
+    管理Twitter平台的环境，处理Interview命令
     """
-    
+
     def __init__(
         self,
         simulation_dir: str,
         twitter_env=None,
         twitter_agent_graph=None,
-        reddit_env=None,
-        reddit_agent_graph=None
     ):
         self.simulation_dir = simulation_dir
         self.twitter_env = twitter_env
         self.twitter_agent_graph = twitter_agent_graph
-        self.reddit_env = reddit_env
-        self.reddit_agent_graph = reddit_agent_graph
         
         self.commands_dir = os.path.join(simulation_dir, IPC_COMMANDS_DIR)
         self.responses_dir = os.path.join(simulation_dir, IPC_RESPONSES_DIR)
@@ -249,7 +222,6 @@ class ParallelIPCHandler:
             json.dump({
                 "status": status,
                 "twitter_available": self.twitter_env is not None,
-                "reddit_available": self.reddit_env is not None,
                 "timestamp": datetime.now().isoformat()
             }, f, ensure_ascii=False, indent=2)
     
@@ -300,19 +272,13 @@ class ParallelIPCHandler:
     def _get_env_and_graph(self, platform: str):
         """
         获取指定平台的环境和agent_graph
-        
-        Args:
-            platform: 平台名称 ("twitter" 或 "reddit")
-            
+
         Returns:
             (env, agent_graph, platform_name) 或 (None, None, None)
         """
         if platform == "twitter" and self.twitter_env:
             return self.twitter_env, self.twitter_agent_graph, "twitter"
-        elif platform == "reddit" and self.reddit_env:
-            return self.reddit_env, self.reddit_agent_graph, "reddit"
-        else:
-            return None, None, None
+        return None, None, None
     
     async def _interview_single_platform(self, agent_id: int, prompt: str, platform: str) -> Dict[str, Any]:
         """
@@ -345,115 +311,47 @@ class ParallelIPCHandler:
     async def handle_interview(self, command_id: str, agent_id: int, prompt: str, platform: str = None) -> bool:
         """
         处理单个Agent采访命令
-        
+
         Args:
             command_id: 命令ID
             agent_id: Agent ID
             prompt: 采访问题
-            platform: 指定平台（可选）
-                - "twitter": 只采访Twitter平台
-                - "reddit": 只采访Reddit平台
-                - None/不指定: 同时采访两个平台，返回整合结果
-            
+            platform: 指定平台（可选，固定为"twitter"）
+
         Returns:
             True 表示成功，False 表示失败
         """
-        # 如果指定了平台，只采访该平台
-        if platform in ("twitter", "reddit"):
-            result = await self._interview_single_platform(agent_id, prompt, platform)
-            
-            if "error" in result:
-                self.send_response(command_id, "failed", error=result["error"])
-                print(f"  Interview失败: agent_id={agent_id}, platform={platform}, error={result['error']}")
-                return False
-            else:
-                self.send_response(command_id, "completed", result=result)
-                print(f"  Interview完成: agent_id={agent_id}, platform={platform}")
-                return True
-        
-        # 未指定平台：同时采访两个平台
-        if not self.twitter_env and not self.reddit_env:
+        if not self.twitter_env:
             self.send_response(command_id, "failed", error="没有可用的模拟环境")
             return False
-        
-        results = {
-            "agent_id": agent_id,
-            "prompt": prompt,
-            "platforms": {}
-        }
-        success_count = 0
-        
-        # 并行采访两个平台
-        tasks = []
-        platforms_to_interview = []
-        
-        if self.twitter_env:
-            tasks.append(self._interview_single_platform(agent_id, prompt, "twitter"))
-            platforms_to_interview.append("twitter")
-        
-        if self.reddit_env:
-            tasks.append(self._interview_single_platform(agent_id, prompt, "reddit"))
-            platforms_to_interview.append("reddit")
-        
-        # 并行执行
-        platform_results = await asyncio.gather(*tasks)
-        
-        for platform_name, platform_result in zip(platforms_to_interview, platform_results):
-            results["platforms"][platform_name] = platform_result
-            if "error" not in platform_result:
-                success_count += 1
-        
-        if success_count > 0:
-            self.send_response(command_id, "completed", result=results)
-            print(f"  Interview完成: agent_id={agent_id}, 成功平台数={success_count}/{len(platforms_to_interview)}")
-            return True
-        else:
-            errors = [f"{p}: {r.get('error', '未知错误')}" for p, r in results["platforms"].items()]
-            self.send_response(command_id, "failed", error="; ".join(errors))
-            print(f"  Interview失败: agent_id={agent_id}, 所有平台都失败")
+
+        result = await self._interview_single_platform(agent_id, prompt, "twitter")
+
+        if "error" in result:
+            self.send_response(command_id, "failed", error=result["error"])
+            print(f"  Interview失败: agent_id={agent_id}, error={result['error']}")
             return False
+        else:
+            self.send_response(command_id, "completed", result=result)
+            print(f"  Interview完成: agent_id={agent_id}")
+            return True
     
     async def handle_batch_interview(self, command_id: str, interviews: List[Dict], platform: str = None) -> bool:
         """
         处理批量采访命令
-        
+
         Args:
             command_id: 命令ID
-            interviews: [{"agent_id": int, "prompt": str, "platform": str(optional)}, ...]
-            platform: 默认平台（可被每个interview项覆盖）
-                - "twitter": 只采访Twitter平台
-                - "reddit": 只采访Reddit平台
-                - None/不指定: 每个Agent同时采访两个平台
+            interviews: [{"agent_id": int, "prompt": str}, ...]
+            platform: 默认平台（固定为"twitter"）
         """
-        # 按平台分组
-        twitter_interviews = []
-        reddit_interviews = []
-        both_platforms_interviews = []  # 需要同时采访两个平台的
-        
-        for interview in interviews:
-            item_platform = interview.get("platform", platform)
-            if item_platform == "twitter":
-                twitter_interviews.append(interview)
-            elif item_platform == "reddit":
-                reddit_interviews.append(interview)
-            else:
-                # 未指定平台：两个平台都采访
-                both_platforms_interviews.append(interview)
-        
-        # 把 both_platforms_interviews 拆分到两个平台
-        if both_platforms_interviews:
-            if self.twitter_env:
-                twitter_interviews.extend(both_platforms_interviews)
-            if self.reddit_env:
-                reddit_interviews.extend(both_platforms_interviews)
-        
         results = {}
-        
+
         # 处理Twitter平台的采访
-        if twitter_interviews and self.twitter_env:
+        if interviews and self.twitter_env:
             try:
                 twitter_actions = {}
-                for interview in twitter_interviews:
+                for interview in interviews:
                     agent_id = interview.get("agent_id")
                     prompt = interview.get("prompt", "")
                     try:
@@ -464,45 +362,18 @@ class ParallelIPCHandler:
                         )
                     except Exception as e:
                         print(f"  警告: 无法获取Twitter Agent {agent_id}: {e}")
-                
+
                 if twitter_actions:
                     await self.twitter_env.step(twitter_actions)
-                    
-                    for interview in twitter_interviews:
+
+                    for interview in interviews:
                         agent_id = interview.get("agent_id")
                         result = self._get_interview_result(agent_id, "twitter")
                         result["platform"] = "twitter"
                         results[f"twitter_{agent_id}"] = result
             except Exception as e:
                 print(f"  Twitter批量Interview失败: {e}")
-        
-        # 处理Reddit平台的采访
-        if reddit_interviews and self.reddit_env:
-            try:
-                reddit_actions = {}
-                for interview in reddit_interviews:
-                    agent_id = interview.get("agent_id")
-                    prompt = interview.get("prompt", "")
-                    try:
-                        agent = self.reddit_agent_graph.get_agent(agent_id)
-                        reddit_actions[agent] = ManualAction(
-                            action_type=ActionType.INTERVIEW,
-                            action_args={"prompt": prompt}
-                        )
-                    except Exception as e:
-                        print(f"  警告: 无法获取Reddit Agent {agent_id}: {e}")
-                
-                if reddit_actions:
-                    await self.reddit_env.step(reddit_actions)
-                    
-                    for interview in reddit_interviews:
-                        agent_id = interview.get("agent_id")
-                        result = self._get_interview_result(agent_id, "reddit")
-                        result["platform"] = "reddit"
-                        results[f"reddit_{agent_id}"] = result
-            except Exception as e:
-                print(f"  Reddit批量Interview失败: {e}")
-        
+
         if results:
             self.send_response(command_id, "completed", result={
                 "interviews_count": len(results),
@@ -1290,222 +1161,13 @@ async def run_twitter_simulation(
     return result
 
 
-async def run_reddit_simulation(
-    config: Dict[str, Any], 
-    simulation_dir: str,
-    action_logger: Optional[PlatformActionLogger] = None,
-    main_logger: Optional[SimulationLogManager] = None,
-    max_rounds: Optional[int] = None
-) -> PlatformSimulation:
-    """运行Reddit模拟
-    
-    Args:
-        config: 模拟配置
-        simulation_dir: 模拟目录
-        action_logger: 动作日志记录器
-        main_logger: 主日志管理器
-        max_rounds: 最大模拟轮数（可选，用于截断过长的模拟）
-        
-    Returns:
-        PlatformSimulation: 包含env和agent_graph的结果对象
-    """
-    result = PlatformSimulation()
-    
-    def log_info(msg):
-        if main_logger:
-            main_logger.info(f"[Reddit] {msg}")
-        print(f"[Reddit] {msg}")
-    
-    log_info("初始化...")
-    
-    # Reddit 使用加速 LLM 配置（如果有的话，否则回退到通用配置）
-    model = create_model(config, use_boost=True)
-    
-    profile_path = os.path.join(simulation_dir, "reddit_profiles.json")
-    if not os.path.exists(profile_path):
-        log_info(f"错误: Profile文件不存在: {profile_path}")
-        return result
-    
-    result.agent_graph = await generate_reddit_agent_graph(
-        profile_path=profile_path,
-        model=model,
-        available_actions=REDDIT_ACTIONS,
-    )
-    
-    # 从配置文件获取 Agent 真实名称映射（使用 entity_name 而非默认的 Agent_X）
-    agent_names = get_agent_names_from_config(config)
-    # 如果配置中没有某个 agent，则使用 OASIS 的默认名称
-    for agent_id, agent in result.agent_graph.get_agents():
-        if agent_id not in agent_names:
-            agent_names[agent_id] = getattr(agent, 'name', f'Agent_{agent_id}')
-    
-    db_path = os.path.join(simulation_dir, "reddit_simulation.db")
-    if os.path.exists(db_path):
-        os.remove(db_path)
-    
-    result.env = oasis.make(
-        agent_graph=result.agent_graph,
-        platform=oasis.DefaultPlatformType.REDDIT,
-        database_path=db_path,
-        semaphore=30,  # 限制最大并发 LLM 请求数，防止 API 过载
-    )
-    
-    await result.env.reset()
-    log_info("环境已启动")
-    
-    if action_logger:
-        action_logger.log_simulation_start(config)
-    
-    total_actions = 0
-    last_rowid = 0  # 跟踪数据库中最后处理的行号（使用 rowid 避免 created_at 格式差异）
-    
-    # 执行初始事件
-    event_config = config.get("event_config", {})
-    initial_posts = event_config.get("initial_posts", [])
-    
-    # 记录 round 0 开始（初始事件阶段）
-    if action_logger:
-        action_logger.log_round_start(0, 0)  # round 0, simulated_hour 0
-    
-    initial_action_count = 0
-    if initial_posts:
-        initial_actions = {}
-        for post in initial_posts:
-            agent_id = post.get("poster_agent_id", 0)
-            content = post.get("content", "")
-            try:
-                agent = result.env.agent_graph.get_agent(agent_id)
-                if agent in initial_actions:
-                    if not isinstance(initial_actions[agent], list):
-                        initial_actions[agent] = [initial_actions[agent]]
-                    initial_actions[agent].append(ManualAction(
-                        action_type=ActionType.CREATE_POST,
-                        action_args={"content": content}
-                    ))
-                else:
-                    initial_actions[agent] = ManualAction(
-                        action_type=ActionType.CREATE_POST,
-                        action_args={"content": content}
-                    )
-                
-                if action_logger:
-                    action_logger.log_action(
-                        round_num=0,
-                        agent_id=agent_id,
-                        agent_name=agent_names.get(agent_id, f"Agent_{agent_id}"),
-                        action_type="CREATE_POST",
-                        action_args={"content": content}
-                    )
-                    total_actions += 1
-                    initial_action_count += 1
-            except Exception:
-                pass
-        
-        if initial_actions:
-            await result.env.step(initial_actions)
-            log_info(f"已发布 {len(initial_actions)} 条初始帖子")
-    
-    # 记录 round 0 结束
-    if action_logger:
-        action_logger.log_round_end(0, initial_action_count)
-    
-    # 主模拟循环
-    time_config = config.get("time_config", {})
-    total_hours = time_config.get("total_simulation_hours", 72)
-    minutes_per_round = time_config.get("minutes_per_round", 30)
-    total_rounds = (total_hours * 60) // minutes_per_round
-    
-    # 如果指定了最大轮数，则截断
-    if max_rounds is not None and max_rounds > 0:
-        original_rounds = total_rounds
-        total_rounds = min(total_rounds, max_rounds)
-        if total_rounds < original_rounds:
-            log_info(f"轮数已截断: {original_rounds} -> {total_rounds} (max_rounds={max_rounds})")
-    
-    start_time = datetime.now()
-    
-    for round_num in range(total_rounds):
-        # 检查是否收到退出信号
-        if _shutdown_event and _shutdown_event.is_set():
-            if main_logger:
-                main_logger.info(f"收到退出信号，在第 {round_num + 1} 轮停止模拟")
-            break
-        
-        simulated_minutes = round_num * minutes_per_round
-        simulated_hour = (simulated_minutes // 60) % 24
-        simulated_day = simulated_minutes // (60 * 24) + 1
-        
-        active_agents = get_active_agents_for_round(
-            result.env, config, simulated_hour, round_num
-        )
-        
-        # 无论是否有活跃agent，都记录round开始
-        if action_logger:
-            action_logger.log_round_start(round_num + 1, simulated_hour)
-        
-        if not active_agents:
-            # 没有活跃agent时也记录round结束（actions_count=0）
-            if action_logger:
-                action_logger.log_round_end(round_num + 1, 0)
-            continue
-        
-        actions = {agent: LLMAction() for _, agent in active_agents}
-        await result.env.step(actions)
-        
-        # 从数据库获取实际执行的动作并记录
-        actual_actions, last_rowid = fetch_new_actions_from_db(
-            db_path, last_rowid, agent_names
-        )
-        
-        round_action_count = 0
-        for action_data in actual_actions:
-            if action_logger:
-                action_logger.log_action(
-                    round_num=round_num + 1,
-                    agent_id=action_data['agent_id'],
-                    agent_name=action_data['agent_name'],
-                    action_type=action_data['action_type'],
-                    action_args=action_data['action_args']
-                )
-                total_actions += 1
-                round_action_count += 1
-        
-        if action_logger:
-            action_logger.log_round_end(round_num + 1, round_action_count)
-        
-        if (round_num + 1) % 20 == 0:
-            progress = (round_num + 1) / total_rounds * 100
-            log_info(f"Day {simulated_day}, {simulated_hour:02d}:00 - Round {round_num + 1}/{total_rounds} ({progress:.1f}%)")
-    
-    # 注意：不关闭环境，保留给Interview使用
-    
-    if action_logger:
-        action_logger.log_simulation_end(total_rounds, total_actions)
-    
-    result.total_actions = total_actions
-    elapsed = (datetime.now() - start_time).total_seconds()
-    log_info(f"模拟循环完成! 耗时: {elapsed:.1f}秒, 总动作: {total_actions}")
-    
-    return result
-
-
 async def main():
-    parser = argparse.ArgumentParser(description='OASIS双平台并行模拟')
+    parser = argparse.ArgumentParser(description='OASIS Twitter 模拟')
     parser.add_argument(
         '--config', 
         type=str, 
         required=True,
         help='配置文件路径 (simulation_config.json)'
-    )
-    parser.add_argument(
-        '--twitter-only',
-        action='store_true',
-        help='只运行Twitter模拟'
-    )
-    parser.add_argument(
-        '--reddit-only',
-        action='store_true',
-        help='只运行Reddit模拟'
     )
     parser.add_argument(
         '--max-rounds',
@@ -1540,10 +1202,9 @@ async def main():
     # 创建日志管理器
     log_manager = SimulationLogManager(simulation_dir)
     twitter_logger = log_manager.get_twitter_logger()
-    reddit_logger = log_manager.get_reddit_logger()
-    
+
     log_manager.info("=" * 60)
-    log_manager.info("OASIS 双平台并行模拟")
+    log_manager.info("OASIS Twitter 模拟")
     log_manager.info(f"配置文件: {args.config}")
     log_manager.info(f"模拟ID: {config.get('simulation_id', 'unknown')}")
     log_manager.info(f"等待命令模式: {'启用' if wait_for_commands else '禁用'}")
@@ -1567,26 +1228,12 @@ async def main():
     log_manager.info("日志结构:")
     log_manager.info(f"  - 主日志: simulation.log")
     log_manager.info(f"  - Twitter动作: twitter/actions.jsonl")
-    log_manager.info(f"  - Reddit动作: reddit/actions.jsonl")
     log_manager.info("=" * 60)
     
     start_time = datetime.now()
     
-    # 存储两个平台的模拟结果
     twitter_result: Optional[PlatformSimulation] = None
-    reddit_result: Optional[PlatformSimulation] = None
-    
-    if args.twitter_only:
-        twitter_result = await run_twitter_simulation(config, simulation_dir, twitter_logger, log_manager, args.max_rounds)
-    elif args.reddit_only:
-        reddit_result = await run_reddit_simulation(config, simulation_dir, reddit_logger, log_manager, args.max_rounds)
-    else:
-        # 并行运行（每个平台使用独立的日志记录器）
-        results = await asyncio.gather(
-            run_twitter_simulation(config, simulation_dir, twitter_logger, log_manager, args.max_rounds),
-            run_reddit_simulation(config, simulation_dir, reddit_logger, log_manager, args.max_rounds),
-        )
-        twitter_result, reddit_result = results
+    twitter_result = await run_twitter_simulation(config, simulation_dir, twitter_logger, log_manager, args.max_rounds)
     
     total_elapsed = (datetime.now() - start_time).total_seconds()
     log_manager.info("=" * 60)
@@ -1605,8 +1252,6 @@ async def main():
             simulation_dir=simulation_dir,
             twitter_env=twitter_result.env if twitter_result else None,
             twitter_agent_graph=twitter_result.agent_graph if twitter_result else None,
-            reddit_env=reddit_result.env if reddit_result else None,
-            reddit_agent_graph=reddit_result.agent_graph if reddit_result else None
         )
         ipc_handler.update_status("alive")
         
@@ -1637,16 +1282,11 @@ async def main():
         await twitter_result.env.close()
         log_manager.info("[Twitter] 环境已关闭")
     
-    if reddit_result and reddit_result.env:
-        await reddit_result.env.close()
-        log_manager.info("[Reddit] 环境已关闭")
-    
     log_manager.info("=" * 60)
     log_manager.info(f"全部完成!")
     log_manager.info(f"日志文件:")
     log_manager.info(f"  - {os.path.join(simulation_dir, 'simulation.log')}")
     log_manager.info(f"  - {os.path.join(simulation_dir, 'twitter', 'actions.jsonl')}")
-    log_manager.info(f"  - {os.path.join(simulation_dir, 'reddit', 'actions.jsonl')}")
     log_manager.info("=" * 60)
 
 
