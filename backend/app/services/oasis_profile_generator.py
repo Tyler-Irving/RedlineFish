@@ -830,7 +830,7 @@ class OasisProfileGenerator:
                     return
                 
                 try:
-                    # Twitter CSV 格式
+                    # Twitter CSV format
                     import csv
                     profiles_data = [p.to_twitter_format() for p in existing_profiles]
                     if profiles_data:
