@@ -21,7 +21,10 @@ logger = get_logger('mirofish.api.simulation')
 
 # Interview prompt optimization prefix.
 # Adding this prefix prevents the Agent from calling tools and forces a plain-text reply.
-INTERVIEW_PROMPT_PREFIX = "结合你的人设、所有的过往记忆与行动，不调用任何工具直接用文本回复我："
+INTERVIEW_PROMPT_PREFIX = (
+    "Drawing on your persona, all past memories and actions, "
+    "respond directly in plain text without calling any tools: "
+)
 
 
 def optimize_interview_prompt(prompt: str) -> str:
@@ -1964,19 +1967,19 @@ def get_agent_stats(simulation_id: str):
         }), 500
 
 
-# ============== 数据库查询接口 ==============
+# ============== Database Query Endpoints ==============
 
 @simulation_bp.route('/<simulation_id>/posts', methods=['GET'])
 def get_simulation_posts(simulation_id: str):
     """
-    获取模拟中的帖子
-    
-    Query参数：
-        platform: 平台类型（twitter）
-        limit: 返回数量（默认50）
-        offset: 偏移量
+    Get posts from a simulation.
 
-    返回帖子列表（从SQLite数据库读取）
+    Query parameters:
+        platform: platform type (twitter)
+        limit: number of results to return (default 50)
+        offset: starting offset
+
+    Returns a list of posts read from the SQLite database.
     """
     try:
         platform = request.args.get('platform', 'twitter')
@@ -1998,7 +2001,7 @@ def get_simulation_posts(simulation_id: str):
                     "platform": platform,
                     "count": 0,
                     "posts": [],
-                    "message": "数据库不存在，模拟可能尚未运行"
+                    "message": "Database not found — simulation may not have run yet"
                 }
             })
         
@@ -2036,7 +2039,7 @@ def get_simulation_posts(simulation_id: str):
         })
         
     except Exception as e:
-        logger.error(f"获取帖子失败: {str(e)}")
+        logger.error(f"Failed to get posts: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -2047,12 +2050,12 @@ def get_simulation_posts(simulation_id: str):
 @simulation_bp.route('/<simulation_id>/comments', methods=['GET'])
 def get_simulation_comments(simulation_id: str):
     """
-    获取模拟中的评论（从Twitter数据库读取）
-    
-    Query参数：
-        post_id: 过滤帖子ID（可选）
-        limit: 返回数量
-        offset: 偏移量
+    Get comments from a simulation (reads from the Twitter SQLite database).
+
+    Query parameters:
+        post_id: filter by post ID (optional)
+        limit: number of results to return
+        offset: starting offset
     """
     try:
         post_id = request.args.get('post_id')
@@ -2111,7 +2114,7 @@ def get_simulation_comments(simulation_id: str):
         })
         
     except Exception as e:
-        logger.error(f"获取评论失败: {str(e)}")
+        logger.error(f"Failed to get comments: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -2119,33 +2122,33 @@ def get_simulation_comments(simulation_id: str):
         }), 500
 
 
-# ============== Interview 采访接口 ==============
+# ============== Interview Endpoints ==============
 
 @simulation_bp.route('/interview', methods=['POST'])
 def interview_agent():
     """
-    采访单个Agent
+    Interview a single agent.
 
-    注意：此功能需要模拟环境处于运行状态（完成模拟循环后进入等待命令模式）
+    Note: requires the simulation environment to be running (entered command-wait mode after completing the simulation loop).
 
-    请求（JSON）：
+    Request (JSON):
         {
-            "simulation_id": "sim_xxxx",       // 必填，模拟ID
-            "agent_id": 0,                     // 必填，Agent ID
-            "prompt": "你对这件事有什么看法？",  // 必填，采访问题
-            "platform": "twitter",             // 可选，指定平台（固定twitter）
-            "timeout": 60                      // 可选，超时时间（秒），默认60
+            "simulation_id": "sim_xxxx",   // required
+            "agent_id": 0,                 // required
+            "prompt": "...",               // required: interview question
+            "platform": "twitter",         // optional: fixed to twitter
+            "timeout": 60                  // optional: timeout in seconds (default 60)
         }
 
-    返回：
+    Returns:
         {
             "success": true,
             "data": {
                 "agent_id": 0,
-                "prompt": "你对这件事有什么看法？",
+                "prompt": "...",
                 "result": {
                     "agent_id": 0,
-                    "response": "我认为...",
+                    "response": "...",
                     "platform": "twitter",
                     "timestamp": "2025-12-08T10:00:00"
                 },
@@ -2159,35 +2162,35 @@ def interview_agent():
         simulation_id = data.get('simulation_id')
         agent_id = data.get('agent_id')
         prompt = data.get('prompt')
-        platform = data.get('platform')  # 可选：twitter/None
+        platform = data.get('platform')  # optional: twitter/None
         timeout = data.get('timeout', 60)
 
         if not simulation_id:
             return jsonify({
                 "success": False,
-                "error": "请提供 simulation_id"
+                "error": "simulation_id is required"
             }), 400
 
         if agent_id is None:
             return jsonify({
                 "success": False,
-                "error": "请提供 agent_id"
+                "error": "agent_id is required"
             }), 400
 
         if not prompt:
             return jsonify({
                 "success": False,
-                "error": "请提供 prompt（采访问题）"
+                "error": "prompt is required (interview question)"
             }), 400
-        
-        # 检查环境状态
+
+        # Check environment status
         if not SimulationRunner.check_env_alive(simulation_id):
             return jsonify({
                 "success": False,
-                "error": "模拟环境未运行或已关闭。请确保模拟已完成并进入等待命令模式。"
+                "error": "Simulation environment is not running or has been closed. Ensure the simulation has completed and entered command-wait mode."
             }), 400
-        
-        # 优化prompt，添加前缀避免Agent调用工具
+
+        # Optimise the prompt — prepend prefix to prevent the agent from calling tools
         optimized_prompt = optimize_interview_prompt(prompt)
         
         result = SimulationRunner.interview_agent(
@@ -2212,11 +2215,11 @@ def interview_agent():
     except TimeoutError as e:
         return jsonify({
             "success": False,
-            "error": f"等待Interview响应超时: {str(e)}"
+            "error": f"Timed out waiting for interview response: {str(e)}"
         }), 504
-        
+
     except Exception as e:
-        logger.error(f"Interview失败: {str(e)}")
+        logger.error(f"Interview failed: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -2227,29 +2230,29 @@ def interview_agent():
 @simulation_bp.route('/interview/batch', methods=['POST'])
 def interview_agents_batch():
     """
-    批量采访多个Agent
+    Interview multiple agents in batch.
 
-    注意：此功能需要模拟环境处于运行状态
+    Note: requires the simulation environment to be running.
 
-    请求（JSON）：
+    Request (JSON):
         {
-            "simulation_id": "sim_xxxx",       // 必填，模拟ID
-            "interviews": [                    // 必填，采访列表
+            "simulation_id": "sim_xxxx",       // required
+            "interviews": [                    // required: list of interview specs
                 {
                     "agent_id": 0,
-                    "prompt": "你对A有什么看法？",
-                    "platform": "twitter"      // 可选，指定该Agent的采访平台
+                    "prompt": "...",
+                    "platform": "twitter"      // optional: per-item platform override
                 },
                 {
                     "agent_id": 1,
-                    "prompt": "你对B有什么看法？"  // 不指定platform则使用默认值
+                    "prompt": "..."            // omit platform to use the default
                 }
             ],
-            "platform": "twitter",             // 可选，默认平台（被每项的platform覆盖）
-            "timeout": 120                     // 可选，超时时间（秒），默认120
+            "platform": "twitter",             // optional: default platform (overridden per item)
+            "timeout": 120                     // optional: timeout in seconds (default 120)
         }
 
-    返回：
+    Returns:
         {
             "success": true,
             "data": {
@@ -2270,42 +2273,42 @@ def interview_agents_batch():
 
         simulation_id = data.get('simulation_id')
         interviews = data.get('interviews')
-        platform = data.get('platform')  # 可选：twitter/None
+        platform = data.get('platform')  # optional: twitter/None
         timeout = data.get('timeout', 120)
 
         if not simulation_id:
             return jsonify({
                 "success": False,
-                "error": "请提供 simulation_id"
+                "error": "simulation_id is required"
             }), 400
 
         if not interviews or not isinstance(interviews, list):
             return jsonify({
                 "success": False,
-                "error": "请提供 interviews（采访列表）"
+                "error": "interviews list is required"
             }), 400
 
-        # 验证每个采访项
+        # Validate each interview item
         for i, interview in enumerate(interviews):
             if 'agent_id' not in interview:
                 return jsonify({
                     "success": False,
-                    "error": f"采访列表第{i+1}项缺少 agent_id"
+                    "error": f"Interview item {i+1} is missing agent_id"
                 }), 400
             if 'prompt' not in interview:
                 return jsonify({
                     "success": False,
-                    "error": f"采访列表第{i+1}项缺少 prompt"
+                    "error": f"Interview item {i+1} is missing prompt"
                 }), 400
 
-        # 检查环境状态
+        # Check environment status
         if not SimulationRunner.check_env_alive(simulation_id):
             return jsonify({
                 "success": False,
-                "error": "模拟环境未运行或已关闭。请确保模拟已完成并进入等待命令模式。"
+                "error": "Simulation environment is not running or has been closed. Ensure the simulation has completed and entered command-wait mode."
             }), 400
 
-        # 优化每个采访项的prompt，添加前缀避免Agent调用工具
+        # Optimise each interview prompt — prepend prefix to prevent tool calls
         optimized_interviews = []
         for interview in interviews:
             optimized_interview = interview.copy()
@@ -2333,11 +2336,11 @@ def interview_agents_batch():
     except TimeoutError as e:
         return jsonify({
             "success": False,
-            "error": f"等待批量Interview响应超时: {str(e)}"
+            "error": f"Timed out waiting for batch interview response: {str(e)}"
         }), 504
 
     except Exception as e:
-        logger.error(f"批量Interview失败: {str(e)}")
+        logger.error(f"Batch interview failed: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -2348,19 +2351,19 @@ def interview_agents_batch():
 @simulation_bp.route('/interview/all', methods=['POST'])
 def interview_all_agents():
     """
-    全局采访 - 使用相同问题采访所有Agent
+    Global interview — ask all agents the same question.
 
-    注意：此功能需要模拟环境处于运行状态
+    Note: requires the simulation environment to be running.
 
-    请求（JSON）：
+    Request (JSON):
         {
-            "simulation_id": "sim_xxxx",            // 必填，模拟ID
-            "prompt": "你对这件事整体有什么看法？",  // 必填，采访问题（所有Agent使用相同问题）
-            "platform": "twitter",                  // 可选，指定平台（固定twitter）
-            "timeout": 180                          // 可选，超时时间（秒），默认180
+            "simulation_id": "sim_xxxx",   // required
+            "prompt": "...",               // required: question sent to every agent
+            "platform": "twitter",         // optional: fixed to twitter
+            "timeout": 180                 // optional: timeout in seconds (default 180)
         }
 
-    返回：
+    Returns:
         {
             "success": true,
             "data": {
@@ -2381,29 +2384,29 @@ def interview_all_agents():
 
         simulation_id = data.get('simulation_id')
         prompt = data.get('prompt')
-        platform = data.get('platform')  # 可选：twitter/None
+        platform = data.get('platform')  # optional: twitter/None
         timeout = data.get('timeout', 180)
 
         if not simulation_id:
             return jsonify({
                 "success": False,
-                "error": "请提供 simulation_id"
+                "error": "simulation_id is required"
             }), 400
 
         if not prompt:
             return jsonify({
                 "success": False,
-                "error": "请提供 prompt（采访问题）"
+                "error": "prompt is required (interview question)"
             }), 400
 
-        # 检查环境状态
+        # Check environment status
         if not SimulationRunner.check_env_alive(simulation_id):
             return jsonify({
                 "success": False,
-                "error": "模拟环境未运行或已关闭。请确保模拟已完成并进入等待命令模式。"
+                "error": "Simulation environment is not running or has been closed. Ensure the simulation has completed and entered command-wait mode."
             }), 400
 
-        # 优化prompt，添加前缀避免Agent调用工具
+        # Optimise prompt — prepend prefix to prevent tool calls
         optimized_prompt = optimize_interview_prompt(prompt)
 
         result = SimulationRunner.interview_all_agents(
@@ -2427,11 +2430,11 @@ def interview_all_agents():
     except TimeoutError as e:
         return jsonify({
             "success": False,
-            "error": f"等待全局Interview响应超时: {str(e)}"
+            "error": f"Timed out waiting for global interview response: {str(e)}"
         }), 504
 
     except Exception as e:
-        logger.error(f"全局Interview失败: {str(e)}")
+        logger.error(f"Global interview failed: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -2442,19 +2445,19 @@ def interview_all_agents():
 @simulation_bp.route('/interview/history', methods=['POST'])
 def get_interview_history():
     """
-    获取Interview历史记录
+    Get interview history.
 
-    从模拟数据库中读取所有Interview记录
+    Reads all interview records from the simulation database.
 
-    请求（JSON）：
+    Request (JSON):
         {
-            "simulation_id": "sim_xxxx",  // 必填，模拟ID
-            "platform": "twitter",         // 可选，平台类型（twitter）
-            "agent_id": 0,                 // 可选，只获取该Agent的采访历史
-            "limit": 100                   // 可选，返回数量，默认100
+            "simulation_id": "sim_xxxx",  // required
+            "platform": "twitter",         // optional: platform type (twitter)
+            "agent_id": 0,                 // optional: return history only for this agent
+            "limit": 100                   // optional: number of results (default 100)
         }
 
-    返回：
+    Returns:
         {
             "success": true,
             "data": {
@@ -2462,8 +2465,8 @@ def get_interview_history():
                 "history": [
                     {
                         "agent_id": 0,
-                        "response": "我认为...",
-                        "prompt": "你对这件事有什么看法？",
+                        "response": "...",
+                        "prompt": "...",
                         "timestamp": "2025-12-08T10:00:00",
                         "platform": "twitter"
                     },
@@ -2476,14 +2479,14 @@ def get_interview_history():
         data = request.get_json() or {}
         
         simulation_id = data.get('simulation_id')
-        platform = data.get('platform')  # 可选：twitter
+        platform = data.get('platform')  # optional: twitter
         agent_id = data.get('agent_id')
         limit = data.get('limit', 100)
-        
+
         if not simulation_id:
             return jsonify({
                 "success": False,
-                "error": "请提供 simulation_id"
+                "error": "simulation_id is required"
             }), 400
 
         history = SimulationRunner.get_interview_history(
@@ -2502,7 +2505,7 @@ def get_interview_history():
         })
 
     except Exception as e:
-        logger.error(f"获取Interview历史失败: {str(e)}")
+        logger.error(f"Failed to get interview history: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -2513,23 +2516,23 @@ def get_interview_history():
 @simulation_bp.route('/env-status', methods=['POST'])
 def get_env_status():
     """
-    获取模拟环境状态
+    Get the simulation environment status.
 
-    检查模拟环境是否存活（可以接收Interview命令）
+    Checks whether the simulation environment is alive (able to receive interview commands).
 
-    请求（JSON）：
+    Request (JSON):
         {
-            "simulation_id": "sim_xxxx"  // 必填，模拟ID
+            "simulation_id": "sim_xxxx"  // required
         }
 
-    返回：
+    Returns:
         {
             "success": true,
             "data": {
                 "simulation_id": "sim_xxxx",
                 "env_alive": true,
                 "twitter_available": true,
-                "message": "环境正在运行，可以接收Interview命令"
+                "message": "Environment is running and ready for interview commands"
             }
         }
     """
@@ -2541,18 +2544,18 @@ def get_env_status():
         if not simulation_id:
             return jsonify({
                 "success": False,
-                "error": "请提供 simulation_id"
+                "error": "simulation_id is required"
             }), 400
 
         env_alive = SimulationRunner.check_env_alive(simulation_id)
-        
-        # 获取更详细的状态信息
+
+        # Fetch more detailed status information
         env_status = SimulationRunner.get_env_status_detail(simulation_id)
 
         if env_alive:
-            message = "环境正在运行，可以接收Interview命令"
+            message = "Environment is running and ready for interview commands"
         else:
-            message = "环境未运行或已关闭"
+            message = "Environment is not running or has been closed"
 
         return jsonify({
             "success": True,
@@ -2565,7 +2568,7 @@ def get_env_status():
         })
 
     except Exception as e:
-        logger.error(f"获取环境状态失败: {str(e)}")
+        logger.error(f"Failed to get environment status: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -2576,24 +2579,24 @@ def get_env_status():
 @simulation_bp.route('/close-env', methods=['POST'])
 def close_simulation_env():
     """
-    关闭模拟环境
-    
-    向模拟发送关闭环境命令，使其优雅退出等待命令模式。
-    
-    注意：这不同于 /stop 接口，/stop 会强制终止进程，
-    而此接口会让模拟优雅地关闭环境并退出。
-    
-    请求（JSON）：
+    Close the simulation environment.
+
+    Sends a close-environment command to the simulation so it can exit command-wait mode gracefully.
+
+    Note: this is different from /stop. /stop forcibly terminates the process,
+    whereas this endpoint lets the simulation close the environment and exit cleanly.
+
+    Request (JSON):
         {
-            "simulation_id": "sim_xxxx",  // 必填，模拟ID
-            "timeout": 30                  // 可选，超时时间（秒），默认30
+            "simulation_id": "sim_xxxx",  // required
+            "timeout": 30                  // optional: timeout in seconds (default 30)
         }
-    
-    返回：
+
+    Returns:
         {
             "success": true,
             "data": {
-                "message": "环境关闭命令已发送",
+                "message": "Close-environment command sent",
                 "result": {...},
                 "timestamp": "2025-12-08T10:00:01"
             }
@@ -2608,15 +2611,15 @@ def close_simulation_env():
         if not simulation_id:
             return jsonify({
                 "success": False,
-                "error": "请提供 simulation_id"
+                "error": "simulation_id is required"
             }), 400
-        
+
         result = SimulationRunner.close_simulation_env(
             simulation_id=simulation_id,
             timeout=timeout
         )
         
-        # 更新模拟状态
+        # Update simulation status
         manager = SimulationManager()
         state = manager.get_simulation(simulation_id)
         if state:
@@ -2635,7 +2638,7 @@ def close_simulation_env():
         }), 400
         
     except Exception as e:
-        logger.error(f"关闭环境失败: {str(e)}")
+        logger.error(f"Failed to close environment: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
