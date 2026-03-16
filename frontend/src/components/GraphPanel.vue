@@ -496,7 +496,7 @@ const renderGraph = () => {
   // Links - use path elements to support curved lines
   const linkGroup = g.append('g').attr('class', 'links')
   
-  // 计算曲线路径
+  // Compute the SVG path for a link
   const getLinkPath = (d) => {
     const sx = d.source.x, sy = d.source.y
     const tx = d.target.x, ty = d.target.y

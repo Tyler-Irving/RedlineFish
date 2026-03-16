@@ -369,7 +369,7 @@
               @click="submitSurvey"
             >
               <span v-if="isSurveying" class="loading-spinner"></span>
-              <span v-else>发送问卷</span>
+              <span v-else>Send survey</span>
             </button>
           </div>
 
