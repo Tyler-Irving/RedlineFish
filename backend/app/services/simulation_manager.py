@@ -326,7 +326,7 @@ class SimulationManager:
                 entities=filtered.entities,
                 use_llm=use_llm_for_profiles,
                 progress_callback=profile_progress,
-                graph_id=state.graph_id,  # 传入graph_id用于Zep检索
+                graph_id=state.graph_id,  # Pass graph_id for Zep lookup
                 parallel_count=parallel_profile_count,
                 realtime_output_path=realtime_output_path,
                 output_platform=realtime_platform
@@ -344,7 +344,7 @@ class SimulationManager:
                 )
             
             if state.enable_twitter:
-                # Twitter使用CSV格式（OASIS要求）
+                # Twitter uses CSV format (required by OASIS)
                 generator.save_profiles(
                     profiles=profiles,
                     file_path=os.path.join(sim_dir, "twitter_profiles.csv"),
@@ -396,7 +396,7 @@ class SimulationManager:
                     total=3
                 )
             
-            # 保存配置文件
+            # Save config file
             config_path = os.path.join(sim_dir, "simulation_config.json")
             with open(config_path, 'w', encoding='utf-8') as f:
                 f.write(sim_params.to_json())

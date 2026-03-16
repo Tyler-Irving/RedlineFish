@@ -572,7 +572,7 @@ class SimulationRunner:
                         try:
                             action_data = json.loads(line)
                             
-                            # 处理事件类型的条目
+                            # Handle event-type entries
                             if "event_type" in action_data:
                                 event_type = action_data.get("event_type")
                                 
