@@ -464,7 +464,14 @@ def prepare_simulation():
         use_llm_for_profiles = data.get('use_llm_for_profiles', True)
         parallel_profile_count = data.get('parallel_profile_count', 5)
         max_agents = data.get('max_agents')  # Optional cap on agent count (default: no cap)
-        
+        if max_agents is not None:
+            try:
+                max_agents = int(max_agents)
+                if max_agents <= 0:
+                    return jsonify({"success": False, "error": "max_agents must be a positive integer"}), 400
+            except (ValueError, TypeError):
+                return jsonify({"success": False, "error": "max_agents must be a valid integer"}), 400
+
         # ========== 同步获取实体数量（在后台任务启动前） ==========
         # 这样前端在调用prepare后立即就能获取到预期Agent总数
         try:
