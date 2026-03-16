@@ -63,8 +63,14 @@
 
       <!-- Right: Tabbed content -->
       <div class="panel-wrapper right" :style="rightPanelStyle">
+        <!-- Error state -->
+        <div v-if="loadError" class="load-error">
+          <p>Failed to load exploration data</p>
+          <p class="error-detail">{{ loadError }}</p>
+          <button class="retry-btn" @click="loadError = null; loadData()">Retry</button>
+        </div>
         <!-- Both components are always mounted (v-show), so they load in background -->
-        <div v-show="activeTab === 'report'" class="tab-content">
+        <div v-show="!loadError && activeTab === 'report'" class="tab-content">
           <Step4Report
             v-if="dataReady"
             :reportId="currentReportId"
@@ -76,7 +82,7 @@
           />
         </div>
 
-        <div v-show="activeTab === 'interview'" class="tab-content">
+        <div v-show="!loadError && activeTab === 'interview'" class="tab-content">
           <Step5Interaction
             v-if="dataReady"
             :reportId="currentReportId"
@@ -112,12 +118,14 @@ const activeTab = ref('report')
 const currentReportId = ref(route.params.reportId)
 const simulationId = ref(null)
 const dataReady = ref(false)
+const loadError = ref(null)
 const currentStatus = ref('processing')
 const systemLogs = ref([])
 
 // Data
 const graphData = ref(null)
 const graphLoading = ref(false)
+const graphId = ref(null)
 
 // --- Computed ---
 const statusClass = computed(() => currentStatus.value)
@@ -170,14 +178,16 @@ const loadData = async () => {
       if (simRes.success && simRes.data?.project_id) {
         const projRes = await getProject(simRes.data.project_id)
         if (projRes.success && projRes.data?.graph_id) {
+          graphId.value = projRes.data.graph_id
           await loadGraph(projRes.data.graph_id)
         }
       }
     }
+    dataReady.value = true
   } catch (e) {
     console.warn('ExploreView load error:', e)
-  } finally {
-    dataReady.value = true
+    loadError.value = e.message || 'Failed to load report data'
+    currentStatus.value = 'error'
   }
 }
 
@@ -194,7 +204,7 @@ const loadGraph = async (graphId) => {
 }
 
 const refreshGraph = () => {
-  if (graphData.value?.graph_id) loadGraph(graphData.value.graph_id)
+  if (graphId.value) loadGraph(graphId.value)
 }
 
 onMounted(() => {
@@ -365,4 +375,26 @@ onMounted(() => {
   height: 100%;
   overflow: hidden;
 }
+
+.load-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #666;
+  gap: 8px;
+}
+.load-error p { margin: 0; }
+.error-detail { font-size: 13px; color: #999; }
+.retry-btn {
+  margin-top: 12px;
+  padding: 8px 20px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+.retry-btn:hover { background: #f5f5f5; }
 </style>

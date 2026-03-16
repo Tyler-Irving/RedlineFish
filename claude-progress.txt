@@ -1,27 +1,48 @@
-Session 4 — 2026-03-15
+Session 6 — 2026-03-15
 Branch: redline/phase1-strip
 
 ## Completed this session
 
-- Created TASKS/ folder with 9 task files (001–009)
-- **Task 001 COMPLETE** — README and branding cleanup
-- **Task 003 COMPLETE** — Deleted 8 dead view/component files
-- **Task 005 COMPLETE** — Verified LLM client is fully provider-agnostic (no OpenAI imports in services, no Qwen hardcoding)
+### Pre-PR review fixes (TASK.md)
 
-## Task Queue
+1. **BLOCKER FIXED: `waitForPrepareTask` timer leak** — UploadView.vue
+   - Added `let preparePollTimer = null` at module level
+   - Replaced local `const timer` with `preparePollTimer` assignment
+   - Added cleanup in `onUnmounted`
 
-1. ~~001~~ ✓  2. 002 — E2E browser test — NOT STARTED (manual)
-3. ~~003~~ ✓  4. 004 — English UI labels — Phase 2
-5. ~~005~~ ✓  6. 006 — Agent count defaults — Phase 2
-7. 007 — Simulation round defaults — Phase 2
-8. 008 — Cleanup redundant flags — Phase 3
-9. 009 — Frontend styling polish — Phase 2
+2. **Fixed broken graph refresh** — ExploreView.vue
+   - Added `graphId` ref, populated during `loadData`
+   - `refreshGraph` now uses stored `graphId` instead of non-existent `graphData.value.graph_id`
 
-## Phase 1 status
+3. **Guarded `dataReady` against failed report fetch** — ExploreView.vue
+   - Moved `dataReady.value = true` into success path (out of `finally`)
+   - Added `loadError` ref and error UI with retry button
+   - Children no longer mount with null IDs on fetch failure
 
-All code tasks complete. Only remaining Phase 1 gate is Task 002 (manual E2E browser test).
-All other tasks are Phase 2+.
+4. **Narrowed `chat_json` exception catch** — llm_client.py
+   - Imported `BadRequestError` and `APIError` from openai
+   - Only catches 400-status errors (provider format incompatibility)
+   - Auth, network, and other errors now propagate correctly
+
+5. **Profile generator uses `chat_json()`** — oasis_profile_generator.py
+   - Replaced `chat()` + manual `json.loads()` with `chat_json()`
+   - Removed manual `response_format` kwarg (handled internally)
+   - `chat_json` handles fence stripping and provider fallback
+   - Translated remaining Chinese log messages in this area
+
+### Verification
+
+- Backend imports cleanly (`create_app()` succeeds)
+- Frontend builds cleanly (666 modules, 0 errors)
+- LLM client imports correctly with new openai error types
+
+## Previous session work (Session 5)
+
+- Fixed `frontend/index.html` — lang="en", Redline title/description
+- Translated remaining Chinese comments across backend
+- Verified full stack (backend, frontend, API, proxy)
+- Confirmed 3-stage router and Redline branding
 
 ## Next action
 
-Task 002 — manual E2E browser test. Requires `npm run dev` and browser testing.
+Commit fixes, run /review to verify all findings addressed, then create PR.

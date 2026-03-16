@@ -6,7 +6,7 @@ Uniform OpenAI-format calls to any compatible provider.
 import json
 import re
 from typing import Optional, Dict, Any, List
-from openai import OpenAI
+from openai import OpenAI, BadRequestError, APIError
 
 from ..config import Config
 
@@ -93,7 +93,11 @@ class LLMClient:
                 max_tokens=max_tokens,
                 response_format={"type": "json_object"}
             )
-        except Exception:
+        except (BadRequestError, APIError) as e:
+            # Only retry without response_format for providers that don't support
+            # json_object mode (HTTP 400). Auth, network, and other errors propagate.
+            if isinstance(e, APIError) and e.status_code != 400:
+                raise
             response = self.chat(
                 messages=messages,
                 temperature=temperature,

@@ -194,6 +194,7 @@ const logEl = ref(null)
 let taskPollTimer = null
 let graphPollTimer = null
 let profilePollTimer = null
+let preparePollTimer = null
 
 // --- Computed ---
 const statusClass = computed(() => {
@@ -406,7 +407,7 @@ const runPrepare = async () => {
 
 const waitForPrepareTask = (taskId) => {
   return new Promise((resolve, reject) => {
-    const timer = setInterval(async () => {
+    preparePollTimer = setInterval(async () => {
       try {
         const res = await getPrepareStatus({ task_id: taskId, simulation_id: simulationId.value })
         if (!res.success) return
@@ -414,10 +415,12 @@ const waitForPrepareTask = (taskId) => {
         preparePct.value = task.progress || 0
         if (task.message) addLog(task.message)
         if (task.status === 'completed' || task.status === 'ready') {
-          clearInterval(timer)
+          clearInterval(preparePollTimer)
+          preparePollTimer = null
           resolve()
         } else if (task.status === 'failed') {
-          clearInterval(timer)
+          clearInterval(preparePollTimer)
+          preparePollTimer = null
           reject(new Error(task.error || 'Prepare task failed'))
         }
       } catch (e) {
@@ -505,6 +508,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (taskPollTimer) clearInterval(taskPollTimer)
+  if (preparePollTimer) clearInterval(preparePollTimer)
   stopGraphPolling()
   stopProfilePolling()
 })

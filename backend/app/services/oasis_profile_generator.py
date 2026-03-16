@@ -491,37 +491,21 @@ class OasisProfileGenerator:
                     {"role": "system", "content": self._get_system_prompt(is_individual)},
                     {"role": "user", "content": prompt}
                 ]
-                content = self.llm_client.chat(
+                result = self.llm_client.chat_json(
                     messages=messages,
                     temperature=0.7 - (attempt * 0.1),
-                    response_format={"type": "json_object"}
                 )
 
-                # Parse JSON response
-                try:
-                    result = json.loads(content)
+                # Validate required fields
+                if "bio" not in result or not result["bio"]:
+                    result["bio"] = entity_summary[:200] if entity_summary else f"{entity_type}: {entity_name}"
+                if "persona" not in result or not result["persona"]:
+                    result["persona"] = entity_summary or f"{entity_name} is a {entity_type}."
 
-                    # Validate required fields
-                    if "bio" not in result or not result["bio"]:
-                        result["bio"] = entity_summary[:200] if entity_summary else f"{entity_type}: {entity_name}"
-                    if "persona" not in result or not result["persona"]:
-                        result["persona"] = entity_summary or f"{entity_name}是一个{entity_type}。"
-                    
-                    return result
-                    
-                except json.JSONDecodeError as je:
-                    logger.warning(f"JSON解析失败 (attempt {attempt+1}): {str(je)[:80]}")
-                    
-                    # Attempt to repair malformed JSON
-                    result = self._try_fix_json(content, entity_name, entity_type, entity_summary)
-                    if result.get("_fixed"):
-                        del result["_fixed"]
-                        return result
-                    
-                    last_error = je
+                return result
                     
             except Exception as e:
-                logger.warning(f"LLM调用失败 (attempt {attempt+1}): {str(e)[:80]}")
+                logger.warning(f"LLM call failed (attempt {attempt+1}): {str(e)[:80]}")
                 last_error = e
                 import time
                 time.sleep(1 * (attempt + 1))  # exponential backoff
