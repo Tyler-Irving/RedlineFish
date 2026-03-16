@@ -224,7 +224,8 @@ class SimulationManager:
         defined_entity_types: Optional[List[str]] = None,
         use_llm_for_profiles: bool = True,
         progress_callback: Optional[callable] = None,
-        parallel_profile_count: int = 3
+        parallel_profile_count: int = 5,
+        max_agents: Optional[int] = None
     ) -> SimulationState:
         """
         Prepare the simulation environment (fully automated).
@@ -243,7 +244,8 @@ class SimulationManager:
             defined_entity_types: Pre-defined entity types (optional)
             use_llm_for_profiles: Whether to use LLM for detailed persona generation
             progress_callback: Progress callback (stage, progress, message)
-            parallel_profile_count: Number of parallel persona generation workers (default 3)
+            parallel_profile_count: Number of parallel persona generation workers (default 5)
+            max_agents: Cap on the number of agents to generate. If None, all entities are used.
 
         Returns:
             SimulationState
@@ -291,7 +293,12 @@ class SimulationManager:
                 return state
             
             # ========== Stage 2: Generate Agent Profiles ==========
-            total_entities = len(filtered.entities)
+            entities_for_profiles = filtered.entities
+            if max_agents is not None and len(entities_for_profiles) > max_agents:
+                logger.info(f"Capping agent count: {len(entities_for_profiles)} entities → {max_agents} agents")
+                entities_for_profiles = entities_for_profiles[:max_agents]
+
+            total_entities = len(entities_for_profiles)
 
             if progress_callback:
                 progress_callback(
@@ -323,10 +330,10 @@ class SimulationManager:
                 realtime_platform = "twitter"
             
             profiles = generator.generate_profiles_from_entities(
-                entities=filtered.entities,
+                entities=entities_for_profiles,
                 use_llm=use_llm_for_profiles,
                 progress_callback=profile_progress,
-                graph_id=state.graph_id,  # 传入graph_id用于Zep检索
+                graph_id=state.graph_id,  # Pass graph_id for Zep lookup
                 parallel_count=parallel_profile_count,
                 realtime_output_path=realtime_output_path,
                 output_platform=realtime_platform
@@ -344,7 +351,7 @@ class SimulationManager:
                 )
             
             if state.enable_twitter:
-                # Twitter使用CSV格式（OASIS要求）
+                # Twitter uses CSV format (required by OASIS)
                 generator.save_profiles(
                     profiles=profiles,
                     file_path=os.path.join(sim_dir, "twitter_profiles.csv"),
@@ -396,7 +403,7 @@ class SimulationManager:
                     total=3
                 )
             
-            # 保存配置文件
+            # Save config file
             config_path = os.path.join(sim_dir, "simulation_config.json")
             with open(config_path, 'w', encoding='utf-8') as f:
                 f.write(sim_params.to_json())

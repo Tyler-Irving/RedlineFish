@@ -260,9 +260,9 @@ class SimulationConfigGenerator:
         """
         logger.info(f"Starting simulation config generation: simulation_id={simulation_id}, entities={len(entities)}")
         
-        # 计算总步骤数
+        # Calculate total steps
         num_batches = math.ceil(len(entities) / self.AGENTS_PER_BATCH)
-        total_steps = 3 + num_batches  # 时间配置 + 事件配置 + N批Agent + 平台配置
+        total_steps = 3 + num_batches  # time config + event config + N agent batches + platform config
         current_step = 0
         
         def report_progress(step: int, message: str):
@@ -272,7 +272,7 @@ class SimulationConfigGenerator:
                 progress_callback(step, total_steps, message)
             logger.info(f"[{step}/{total_steps}] {message}")
         
-        # 1. 构建基础上下文信息
+        # 1. Build base context
         context = self._build_context(
             simulation_requirement=simulation_requirement,
             document_text=document_text,
@@ -336,7 +336,7 @@ class SimulationConfigGenerator:
                 echo_chamber_strength=0.5
             )
 
-        # 构建最终参数
+        # Build final parameters
         params = SimulationParameters(
             simulation_id=simulation_id,
             project_id=project_id,
@@ -426,7 +426,7 @@ class SimulationConfigGenerator:
                     response_format={"type": "json_object"}
                 )
 
-                # 尝试解析JSON
+                # Attempt to parse JSON
                 try:
                     return json.loads(content)
                 except json.JSONDecodeError as e:
@@ -913,7 +913,7 @@ class SimulationConfigGenerator:
                 "activity_level": 0.8,
                 "posts_per_hour": 0.6,
                 "comments_per_hour": 1.5,
-                "active_hours": [8, 9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23],  # 上午+晚间
+                "active_hours": [8, 9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23],  # morning + evening
                 "response_delay_min": 1,
                 "response_delay_max": 15,
                 "sentiment_bias": 0.0,
@@ -926,7 +926,7 @@ class SimulationConfigGenerator:
                 "activity_level": 0.6,
                 "posts_per_hour": 0.4,
                 "comments_per_hour": 0.8,
-                "active_hours": [12, 13, 19, 20, 21, 22, 23],  # 午休+晚间
+                "active_hours": [12, 13, 19, 20, 21, 22, 23],  # lunch + evening
                 "response_delay_min": 5,
                 "response_delay_max": 30,
                 "sentiment_bias": 0.0,
@@ -939,7 +939,7 @@ class SimulationConfigGenerator:
                 "activity_level": 0.7,
                 "posts_per_hour": 0.5,
                 "comments_per_hour": 1.2,
-                "active_hours": [9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23],  # 白天+晚间
+                "active_hours": [9, 10, 11, 12, 13, 18, 19, 20, 21, 22, 23],  # daytime + evening
                 "response_delay_min": 2,
                 "response_delay_max": 20,
                 "sentiment_bias": 0.0,

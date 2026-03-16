@@ -1,6 +1,6 @@
 # Task 009 — Frontend Styling Polish
 
-**Status**: not started
+**Status**: complete
 **Phase**: 2
 **Priority**: medium
 
@@ -11,12 +11,12 @@ the three new views.
 
 ## Design Targets
 
-- [ ] Background: `#fff` or `#fafafa` (not dark)
-- [ ] Section padding: 24-40px
-- [ ] Font: system-ui or Inter for body; monospace only for IDs and data values
-- [ ] Remove any remaining dark-mode or MiroFish-era styling
-- [ ] Generous whitespace, clean visual hierarchy
-- [ ] Consistent styling across UploadView, SimulateView, ExploreView
+- [x] Background: `#fff` or `#fafafa` (not dark) — all three views confirmed
+- [x] Section padding: 24-40px — consistent across views
+- [x] Font: Space Grotesk + system-ui (body), JetBrains Mono (IDs/code)
+- [x] Remove any remaining dark-mode or MiroFish-era styling — orange #FF4500 replaced with Redline red #DC2626
+- [x] Generous whitespace, clean visual hierarchy
+- [x] Consistent styling across UploadView, SimulateView, ExploreView
 
 ## References
 

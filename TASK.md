@@ -1,118 +1,140 @@
-# TASK: Fix pre-PR review findings on redline/phase1-strip
+# TASK: Translate `to_text()` methods to match frontend parsers
 
 ## Description
 
-Address all warnings found during `/review` of the `redline/phase1-strip` branch
-before merging to main. One blocker (timer leak), three functional warnings, and
-one backend robustness issue.
+Fix the critical backend/frontend mismatch introduced during Phase 2 polish:
+the frontend `Step4Report.vue` parsers were updated to expect English section
+headers, but the four `to_text()` methods in `zep_tools.py` still emit Chinese.
+This silently breaks every tool-call result card in the Report step — `InsightForge`,
+`PanoramaSearch`, `InterviewAgents`, and `AgentInterview` all parse as empty objects.
 
 ## Context
 
-Branch: `redline/phase1-strip` (6 commits ahead of main)
-Review verdict: **FIX FIRST** — timer leak blocks merge.
+**Branch**: `redline/phase2-polish`
 
-Key files:
-- `frontend/src/views/UploadView.vue` — new 4-phase pipeline view
-- `frontend/src/views/ExploreView.vue` — merged report+interview view
-- `backend/app/utils/llm_client.py` — provider-agnostic LLM wrapper
-- `backend/app/services/oasis_profile_generator.py` — agent persona generator
+**Root cause**: Phase 2 translated UI labels and comments but missed the backend
+dataclass `to_text()` methods, which generate structured text consumed by the
+frontend regex parsers.
+
+**Affected files**:
+- `backend/app/services/zep_tools.py` — four `to_text()` methods emit Chinese headers
+- `frontend/src/components/Step4Report.vue` — parsers expect English headers (already correct, do not change)
+
+**Frontend parser regexes (source of truth — do not change these)**:
+
+| Parser | Expected pattern |
+|--------|-----------------|
+| `parseInsightForge` | `### Sub-Queries`, `### [Key Facts]`, `### [Core Entities]`, `### [Relationship Chains]` |
+| `parsePanorama` | `### [Active Facts]` |
+| `parseInterview` | `**Interview Topic:**`, `**Interviewees:**`, `### Selection Rationale`, `### Interview Transcripts`, `#### Interview #\d+:`, `### Interview Summary & Key Insights` |
+| `AgentInterview.to_text` | `_Bio: ..._`, `**Key Quotes:**` |
+
+**Counter/stat regexes** (also in frontend, must match):
+- `parseInsightForge`: `Relationship Chains:\s*(\d+)`
+- `parsePanorama`: `Active Facts:\s*(\d+)`
+- `parseInterview` count: `\*\*Interviewees:\*\*\s*(\d+)\s*\/\s*(\d+)`
 
 ## Requirements
 
-### 1. Fix `waitForPrepareTask` timer leak (BLOCKER)
+1. Translate `InsightForgeResult.to_text()` (lines ~171–211) to emit English headers
+   that exactly match the frontend regexes listed above.
 
-**File:** `frontend/src/views/UploadView.vue:409`
+2. Translate `PanoramaResult.to_text()` (lines ~250–278) to emit English headers.
 
-`waitForPrepareTask` creates a `setInterval` stored in a local `const timer`
-inside a Promise constructor. If the user navigates away during agent generation,
-this interval fires indefinitely — no reference exists to clear it.
+3. Translate `AgentInterview.to_text()` (lines ~304–337) to emit `_Bio:` and
+   `**Key Quotes:**` instead of `_简介:` and `**关键引言:**`.
 
-**Fix:** Store the interval ID in a module-level variable (`preparePollTimer`)
-and clear it in `onUnmounted`, matching the existing pattern used by
-`taskPollTimer` and `profilePollTimer`.
+4. Translate `InterviewResult.to_text()` (lines ~375–396) to emit English section
+   headers and labels matching the frontend regexes.
 
-### 2. Fix broken graph refresh in ExploreView
+5. Do **not** modify `Step4Report.vue` — the frontend parsers are already correct.
 
-**File:** `frontend/src/views/ExploreView.vue:~699`
+6. Do **not** change the Chinese LLM system prompts inside `zep_tools.py` (lines
+   ~1108, ~1362, ~1589, ~1653, ~1707) — those are out of scope for this task.
 
-`refreshGraph` reads `graphData.value?.graph_id` but graph data has shape
-`{ nodes, edges }` — no `graph_id` key. The manual refresh button silently
-does nothing.
-
-**Fix:** Store `graphId` in a separate `ref` when first resolved during
-`loadData`, and use that ref in `refreshGraph`.
-
-### 3. Guard `dataReady` against failed report fetch in ExploreView
-
-**File:** `frontend/src/views/ExploreView.vue:~663`
-
-`loadData` sets `dataReady = true` in a `finally` block even when `getReport`
-fails, causing child components to mount with `simulationId=null`.
-
-**Fix:** Only set `dataReady = true` on success. On failure, set an error state
-that prevents child component mounting.
-
-### 4. Narrow exception catch in `chat_json` fallback
-
-**File:** `backend/app/utils/llm_client.py:96`
-
-The `except Exception` catch on the first `chat()` call swallows auth failures,
-network errors, and misconfiguration — all silently retry without
-`response_format`. The intent is to handle providers that don't support
-`json_object` format.
-
-**Fix:** Narrow the catch. Import `openai.BadRequestError` and catch only that
-(plus `openai.APIError` with status 400). Re-raise all other exceptions.
-
-### 5. Use `chat_json()` in profile generator instead of manual parse
-
-**File:** `backend/app/services/oasis_profile_generator.py:494`
-
-`_generate_profile_with_llm` calls `self.llm_client.chat()` with
-`response_format={"type": "json_object"}` then manually calls `json.loads()`.
-This bypasses `chat_json()`'s markdown fence stripping and provider fallback.
-
-**Fix:** Replace the `chat()` + manual `json.loads()` with `chat_json()`.
-Remove the manual `response_format` kwarg (handled internally by `chat_json`).
-Keep the existing `_try_fix_json` fallback for `JSONDecodeError` since
-`chat_json` returns a string, not a dict — parse the returned string and
-fall back on failure.
+7. Do **not** change `NodeInfo.to_text()` or `EdgeInfo.to_text()` — those are used
+   for LLM context, not frontend parsing, and are out of scope.
 
 ## Technical Approach
 
-1. Start with requirement 1 (blocker). Add `let preparePollTimer = null` at
-   module level. Replace local `const timer` with assignment to
-   `preparePollTimer`. Add cleanup in `onUnmounted`.
+### Step 1 — `InsightForgeResult.to_text()` (~line 171)
 
-2. Fix requirement 2. Add `const graphId = ref(null)` to ExploreView. Populate
-   it from report data in `loadData`. Use it in `refreshGraph`.
+Replace Chinese with English equivalents:
 
-3. Fix requirement 3. Move `dataReady.value = true` inside the success path.
-   Add a `loadError` ref. Show error state in template when set.
+| Current (Chinese) | Replace with (English) |
+|-------------------|------------------------|
+| `## 未来预测深度分析` | `## Deep Predictive Analysis` |
+| `分析问题: {self.query}` | `Query: {self.query}` |
+| `预测场景: {self.simulation_requirement}` | `Simulation Context: {self.simulation_requirement}` |
+| `### 预测数据统计` | `### Statistics` |
+| `- 关系链: {n}条` | `- Relationship Chains: {n}` |
+| `### 分析的子问题` | `### Sub-Queries` |
+| `### 【关键事实】(请在报告中引用这些原文)` | `### [Key Facts]` |
+| `### 【核心实体】` | `### [Core Entities]` |
+| `  摘要: "{...}"` | `  Summary: "{...}"` |
+| `### 【关系链】` | `### [Relationship Chains]` |
 
-4. Fix requirement 4. Import `BadRequestError` from `openai`. Narrow the
-   catch clause. Add a comment explaining why.
+### Step 2 — `PanoramaResult.to_text()` (~line 250)
 
-5. Fix requirement 5. Change `self.llm_client.chat(messages, ...)` to
-   `self.llm_client.chat_json(messages, ...)` in `_generate_profile_with_llm`.
-   Adjust the response handling since `chat_json` returns a string (the cleaned
-   content), not a dict.
+| Current (Chinese) | Replace with (English) |
+|-------------------|------------------------|
+| `## 广度搜索结果（未来全景视图）` | `## Panorama Search Results` |
+| `### 统计信息` | `### Statistics` |
+| `- 当前有效事实: {n}条` | `- Active Facts: {n}` |
+| `- 历史/过期事实: {n}条` | `- Historical/Expired Facts: {n}` |
+| `### 【当前有效事实】(模拟结果原文)` | `### [Active Facts]` |
+| `### 【历史/过期事实】(演变过程记录)` | `### [Historical/Expired Facts]` |
+| `### 【涉及实体】` | `### [Entities Involved]` |
 
-6. Run `npm run dev` smoke test — verify UploadView pipeline and ExploreView
-   load without console errors.
+### Step 3 — `AgentInterview.to_text()` (~line 304)
+
+| Current (Chinese) | Replace with (English) |
+|-------------------|------------------------|
+| `_简介: {self.agent_bio}_` | `_Bio: {self.agent_bio}_` |
+| `**关键引言:**` | `**Key Quotes:**` |
+
+### Step 4 — `InterviewResult.to_text()` (~line 375)
+
+| Current (Chinese) | Replace with (English) |
+|-------------------|------------------------|
+| `## 深度采访报告` | `## Deep Interview Report` |
+| `**采访主题:** {self.interview_topic}` | `**Interview Topic:** {self.interview_topic}` |
+| `**采访人数:** {n} / {m} 位模拟Agent` | `**Interviewees:** {n} / {m}` |
+| `### 采访对象选择理由` | `### Selection Rationale` |
+| `### 采访实录` | `### Interview Transcripts` |
+| `#### 采访 #{i}: {name}` | `#### Interview #{i}: {name}` |
+| `（无采访记录）` | `(No interview records)` |
+| `### 采访摘要与核心观点` | `### Interview Summary & Key Insights` |
+| `（无摘要）` | `(No summary)` |
+
+### Step 5 — Verify
+
+Confirm each regex in `Step4Report.vue` matches the updated output strings. Run a
+full backend import check (`cd backend && uv run python -c "from app import create_app; create_app()"`)
+and a frontend build (`cd frontend && npm run build`).
 
 ## Acceptance Criteria
 
-- [ ] `waitForPrepareTask` interval is cleared on component unmount
-- [ ] ExploreView graph refresh button works (uses stored `graphId`)
-- [ ] ExploreView does not mount children with null IDs on report fetch failure
-- [ ] `chat_json` only catches provider-format errors, not auth/network errors
-- [ ] Profile generator uses `chat_json()` with fence stripping
-- [ ] No new console errors in browser dev tools during Upload and Explore flows
+- [ ] `InsightForgeResult.to_text()` emits `### Sub-Queries`, `### [Key Facts]`,
+      `### [Core Entities]`, `### [Relationship Chains]`, and `Relationship Chains: N`
+      (matching `parseInsightForge` regexes exactly)
+- [ ] `PanoramaResult.to_text()` emits `### [Active Facts]` and `Active Facts: N`
+      (matching `parsePanorama` regexes exactly)
+- [ ] `AgentInterview.to_text()` emits `_Bio:` and `**Key Quotes:**`
+      (matching `parseInterview` block regex exactly)
+- [ ] `InterviewResult.to_text()` emits `**Interview Topic:**`, `**Interviewees:** N / M`,
+      `### Selection Rationale`, `### Interview Transcripts`, `#### Interview #N:`,
+      and `### Interview Summary & Key Insights`
+- [ ] No other logic in `zep_tools.py` is changed (LLM prompts, IPC, API calls)
+- [ ] `Step4Report.vue` is not modified
+- [ ] Backend imports cleanly with no errors
+- [ ] Frontend build completes with no errors
 
 ## Definition of Done
 
 - [ ] All acceptance criteria met
-- [ ] Lint passes (`cd frontend && npx vue-tsc --noEmit 2>/dev/null; npx eslint src/`)
-- [ ] No console errors in browser during smoke test
-- [ ] claude-progress.txt updated
+- [ ] Lint passes
+- [ ] TypeScript compiles (`cd frontend && npm run build`)
+- [ ] Backend imports without errors
+- [ ] No console errors
+- [ ] `claude-progress.txt` updated
