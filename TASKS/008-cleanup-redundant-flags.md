@@ -1,6 +1,6 @@
 # Task 008 — Clean Up Redundant CLI Flags and Dead Code
 
-**Status**: not started
+**Status**: complete
 **Phase**: 3
 **Priority**: low
 
@@ -10,10 +10,10 @@ Post-strip cleanup of artifacts left intentionally during Phase 1 to avoid risk.
 
 ## Subtasks
 
-- [ ] Remove `--twitter-only` flag from `run_parallel_simulation.py` (now redundant — all runs are Twitter-only)
-- [ ] Clean dormant Reddit code from `zep_tools.py` (dual-platform interview parsing, reddit_profiles.json fallback)
-- [ ] Clean dormant Reddit code from `zep_graph_memory_updater.py` (`'reddit': '世界2'`, `'reddit': []`)
-- [ ] Remove `platform` field from `AgentAction` if frontend no longer needs it for CSS
+- [x] Remove `--twitter-only` flag from `run_parallel_simulation.py` — already gone (removed in Phase 1)
+- [x] Clean dormant Reddit code from `zep_tools.py` — simplified `interview_agents` to Twitter-only, removed reddit_profiles.json fallback in `_load_agent_profiles`
+- [x] Clean dormant Reddit code from `zep_graph_memory_updater.py` — removed `'reddit'` from PLATFORM_DISPLAY_NAMES and `_platform_buffers` init
+- [x] `platform` field on `AgentAction` — kept; frontend uses it for CSS class and icon display
 
 ## References
 
