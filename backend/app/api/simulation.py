@@ -1446,30 +1446,30 @@ def generate_profiles():
 @simulation_bp.route('/start', methods=['POST'])
 def start_simulation():
     """
-    开始运行模拟
+    Start running a simulation.
 
-    请求（JSON）：
+    Request (JSON):
         {
-            "simulation_id": "sim_xxxx",          // 必填，模拟ID
-            "platform": "twitter",                 // 可选: 固定为twitter
-            "max_rounds": 100,                     // 可选: 最大模拟轮数，用于截断过长的模拟
-            "enable_graph_memory_update": false,   // 可选: 是否将Agent活动动态更新到Zep图谱记忆
-            "force": false                         // 可选: 强制重新开始（会停止运行中的模拟并清理日志）
+            "simulation_id": "sim_xxxx",          // required
+            "platform": "twitter",                 // optional: fixed to twitter
+            "max_rounds": 100,                     // optional: cap on simulation rounds
+            "enable_graph_memory_update": false,   // optional: push agent activity to Zep graph memory
+            "force": false                         // optional: force restart (stops running sim and clears logs)
         }
 
-    关于 force 参数：
-        - 启用后，如果模拟正在运行或已完成，会先停止并清理运行日志
-        - 清理的内容包括：run_state.json, actions.jsonl, simulation.log 等
-        - 不会清理配置文件（simulation_config.json）和 profile 文件
-        - 适用于需要重新运行模拟的场景
+    About force:
+        - When enabled, stops and clears run logs if a simulation is running or completed
+        - Cleared files include: run_state.json, actions.jsonl, simulation.log, etc.
+        - Does NOT clear config files (simulation_config.json) or profile files
+        - Use when you need to re-run a simulation from scratch
 
-    关于 enable_graph_memory_update：
-        - 启用后，模拟中所有Agent的活动（发帖、评论、点赞等）都会实时更新到Zep图谱
-        - 这可以让图谱"记住"模拟过程，用于后续分析或AI对话
-        - 需要模拟关联的项目有有效的 graph_id
-        - 采用批量更新机制，减少API调用次数
+    About enable_graph_memory_update:
+        - When enabled, all agent activity (posts, comments, likes, etc.) is written to the Zep graph in real time
+        - Allows the graph to "remember" the simulation for later analysis or AI chat
+        - Requires the linked project to have a valid graph_id
+        - Uses batch updates to minimise API calls
 
-    返回：
+    Returns:
         {
             "success": true,
             "data": {
@@ -1478,8 +1478,8 @@ def start_simulation():
                 "process_pid": 12345,
                 "twitter_running": true,
                 "started_at": "2025-12-01T10:00:00",
-                "graph_memory_update_enabled": true,  // 是否启用了图谱记忆更新
-                "force_restarted": true               // 是否是强制重新开始
+                "graph_memory_update_enabled": true,  // whether graph memory update is enabled
+                "force_restarted": true               // whether this was a forced restart
             }
         }
     """
@@ -1490,111 +1490,111 @@ def start_simulation():
         if not simulation_id:
             return jsonify({
                 "success": False,
-                "error": "请提供 simulation_id"
+                "error": "simulation_id is required"
             }), 400
 
         platform = data.get('platform', 'twitter')
-        max_rounds = data.get('max_rounds')  # 可选：最大模拟轮数
-        enable_graph_memory_update = data.get('enable_graph_memory_update', False)  # 可选：是否启用图谱记忆更新
-        force = data.get('force', False)  # 可选：强制重新开始
+        max_rounds = data.get('max_rounds')  # optional: max simulation rounds
+        enable_graph_memory_update = data.get('enable_graph_memory_update', False)  # optional: push to Zep graph
+        force = data.get('force', False)  # optional: force restart
 
-        # 验证 max_rounds 参数
+        # Validate max_rounds
         if max_rounds is not None:
             try:
                 max_rounds = int(max_rounds)
                 if max_rounds <= 0:
                     return jsonify({
                         "success": False,
-                        "error": "max_rounds 必须是正整数"
+                        "error": "max_rounds must be a positive integer"
                     }), 400
             except (ValueError, TypeError):
                 return jsonify({
                     "success": False,
-                    "error": "max_rounds 必须是有效的整数"
+                    "error": "max_rounds must be a valid integer"
                 }), 400
 
         if platform not in ['twitter', 'parallel']:
             return jsonify({
                 "success": False,
-                "error": f"无效的平台类型: {platform}，可选: twitter/parallel"
+                "error": f"Invalid platform: {platform}. Allowed: twitter/parallel"
             }), 400
 
-        # 检查模拟是否已准备好
+        # Check whether the simulation is ready
         manager = SimulationManager()
         state = manager.get_simulation(simulation_id)
 
         if not state:
             return jsonify({
                 "success": False,
-                "error": f"模拟不存在: {simulation_id}"
+                "error": f"Simulation not found: {simulation_id}"
             }), 404
 
         force_restarted = False
-        
-        # 智能处理状态：如果准备工作已完成，允许重新启动
+
+        # Smart status handling: allow restart if preparation is complete
         if state.status != SimulationStatus.READY:
-            # 检查准备工作是否已完成
+            # Check whether preparation is complete
             is_prepared, prepare_info = _check_simulation_prepared(simulation_id)
 
             if is_prepared:
-                # 准备工作已完成，检查是否有正在运行的进程
+                # Preparation complete — check whether a process is already running
                 if state.status == SimulationStatus.RUNNING:
-                    # 检查模拟进程是否真的在运行
+                    # Check whether the simulation process is actually running
                     run_state = SimulationRunner.get_run_state(simulation_id)
                     if run_state and run_state.runner_status.value == "running":
-                        # 进程确实在运行
+                        # Process is genuinely running
                         if force:
-                            # 强制模式：停止运行中的模拟
-                            logger.info(f"强制模式：停止运行中的模拟 {simulation_id}")
+                            # Force mode: stop the running simulation
+                            logger.info(f"Force mode: stopping running simulation {simulation_id}")
                             try:
                                 SimulationRunner.stop_simulation(simulation_id)
                             except Exception as e:
-                                logger.warning(f"停止模拟时出现警告: {str(e)}")
+                                logger.warning(f"Warning while stopping simulation: {str(e)}")
                         else:
                             return jsonify({
                                 "success": False,
-                                "error": f"模拟正在运行中，请先调用 /stop 接口停止，或使用 force=true 强制重新开始"
+                                "error": "Simulation is already running. Call /stop first, or use force=true to restart."
                             }), 400
 
-                # 如果是强制模式，清理运行日志
+                # In force mode, clean up run logs
                 if force:
-                    logger.info(f"强制模式：清理模拟日志 {simulation_id}")
+                    logger.info(f"Force mode: cleaning up simulation logs for {simulation_id}")
                     cleanup_result = SimulationRunner.cleanup_simulation_logs(simulation_id)
                     if not cleanup_result.get("success"):
-                        logger.warning(f"清理日志时出现警告: {cleanup_result.get('errors')}")
+                        logger.warning(f"Warning while cleaning up logs: {cleanup_result.get('errors')}")
                     force_restarted = True
 
-                # 进程不存在或已结束，重置状态为 ready
-                logger.info(f"模拟 {simulation_id} 准备工作已完成，重置状态为 ready（原状态: {state.status.value}）")
+                # Process does not exist or has already ended — reset status to ready
+                logger.info(f"Simulation {simulation_id} preparation complete; resetting status to ready (was: {state.status.value})")
                 state.status = SimulationStatus.READY
                 manager._save_simulation_state(state)
             else:
-                # 准备工作未完成
+                # Preparation not yet complete
                 return jsonify({
                     "success": False,
-                    "error": f"模拟未准备好，当前状态: {state.status.value}，请先调用 /prepare 接口"
+                    "error": f"Simulation not ready (status: {state.status.value}). Call /prepare first."
                 }), 400
-        
-        # 获取图谱ID（用于图谱记忆更新）
+
+        # Resolve graph_id (used for graph memory updates)
         graph_id = None
         if enable_graph_memory_update:
-            # 从模拟状态或项目中获取 graph_id
+            # Try to get graph_id from simulation state or project
             graph_id = state.graph_id
             if not graph_id:
-                # 尝试从项目中获取
+                # Fall back to project
                 project = ProjectManager.get_project(state.project_id)
                 if project:
                     graph_id = project.graph_id
-            
+
             if not graph_id:
                 return jsonify({
                     "success": False,
-                    "error": "启用图谱记忆更新需要有效的 graph_id，请确保项目已构建图谱"
+                    "error": "Graph memory update requires a valid graph_id. Build the graph first."
                 }), 400
-            
-            logger.info(f"启用图谱记忆更新: simulation_id={simulation_id}, graph_id={graph_id}")
-        
-        # 启动模拟
+
+            logger.info(f"Graph memory update enabled: simulation_id={simulation_id}, graph_id={graph_id}")
+
+        # Start the simulation
         run_state = SimulationRunner.start_simulation(
             simulation_id=simulation_id,
             platform=platform,
@@ -1603,7 +1603,7 @@ def start_simulation():
             graph_id=graph_id
         )
         
-        # 更新模拟状态
+        # Update simulation status
         state.status = SimulationStatus.RUNNING
         manager._save_simulation_state(state)
         
@@ -1627,7 +1627,7 @@ def start_simulation():
         }), 400
         
     except Exception as e:
-        logger.error(f"启动模拟失败: {str(e)}")
+        logger.error(f"Failed to start simulation: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -1638,14 +1638,14 @@ def start_simulation():
 @simulation_bp.route('/stop', methods=['POST'])
 def stop_simulation():
     """
-    停止模拟
-    
-    请求（JSON）：
+    Stop a running simulation.
+
+    Request (JSON):
         {
-            "simulation_id": "sim_xxxx"  // 必填，模拟ID
+            "simulation_id": "sim_xxxx"  // required
         }
-    
-    返回：
+
+    Returns:
         {
             "success": true,
             "data": {
@@ -1662,12 +1662,12 @@ def stop_simulation():
         if not simulation_id:
             return jsonify({
                 "success": False,
-                "error": "请提供 simulation_id"
+                "error": "simulation_id is required"
             }), 400
-        
+
         run_state = SimulationRunner.stop_simulation(simulation_id)
-        
-        # 更新模拟状态
+
+        # Update simulation status
         manager = SimulationManager()
         state = manager.get_simulation(simulation_id)
         if state:
@@ -1686,7 +1686,7 @@ def stop_simulation():
         }), 400
         
     except Exception as e:
-        logger.error(f"停止模拟失败: {str(e)}")
+        logger.error(f"Failed to stop simulation: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -1694,14 +1694,14 @@ def stop_simulation():
         }), 500
 
 
-# ============== 实时状态监控接口 ==============
+# ============== Real-Time Status Monitoring ==============
 
 @simulation_bp.route('/<simulation_id>/run-status', methods=['GET'])
 def get_run_status(simulation_id: str):
     """
-    获取模拟运行实时状态（用于前端轮询）
-    
-    返回：
+    Get the real-time run status for a simulation (for frontend polling).
+
+    Returns:
         {
             "success": true,
             "data": {
@@ -1743,7 +1743,7 @@ def get_run_status(simulation_id: str):
         })
         
     except Exception as e:
-        logger.error(f"获取运行状态失败: {str(e)}")
+        logger.error(f"Failed to get run status: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -1754,14 +1754,14 @@ def get_run_status(simulation_id: str):
 @simulation_bp.route('/<simulation_id>/run-status/detail', methods=['GET'])
 def get_run_status_detail(simulation_id: str):
     """
-    获取模拟运行详细状态（包含所有动作）
-    
-    用于前端展示实时动态
-    
-    Query参数：
-        platform: 过滤平台（twitter，可选）
-    
-    返回：
+    Get detailed run status for a simulation (includes all actions).
+
+    Used for real-time activity display in the frontend.
+
+    Query parameters:
+        platform: filter by platform (twitter, optional)
+
+    Returns:
         {
             "success": true,
             "data": {
@@ -1783,7 +1783,7 @@ def get_run_status_detail(simulation_id: str):
                     },
                     ...
                 ],
-                "twitter_actions": [...]   # Twitter 平台的所有动作
+                "twitter_actions": [...]   # all Twitter platform actions
             }
         }
     """
@@ -1802,19 +1802,19 @@ def get_run_status_detail(simulation_id: str):
                 }
             })
         
-        # 获取完整的动作列表
+        # Fetch the full action list
         all_actions = SimulationRunner.get_all_actions(
             simulation_id=simulation_id,
             platform=platform_filter
         )
         
-        # 分平台获取动作
+        # Fetch per-platform actions
         twitter_actions = SimulationRunner.get_all_actions(
             simulation_id=simulation_id,
             platform="twitter"
         ) if not platform_filter or platform_filter == "twitter" else []
 
-        # 获取当前轮次的动作（recent_actions 只展示最新一轮）
+        # Fetch actions for the current round (recent_actions shows the latest round only)
         current_round = run_state.current_round
         recent_actions = SimulationRunner.get_all_actions(
             simulation_id=simulation_id,
@@ -1822,7 +1822,7 @@ def get_run_status_detail(simulation_id: str):
             round_num=current_round
         ) if current_round > 0 else []
         
-        # 获取基础状态信息
+        # Build result from base run state
         result = run_state.to_dict()
         result["all_actions"] = [a.to_dict() for a in all_actions]
         result["twitter_actions"] = [a.to_dict() for a in twitter_actions]
@@ -1835,7 +1835,7 @@ def get_run_status_detail(simulation_id: str):
         })
         
     except Exception as e:
-        logger.error(f"获取详细状态失败: {str(e)}")
+        logger.error(f"Failed to get detailed status: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -1846,16 +1846,16 @@ def get_run_status_detail(simulation_id: str):
 @simulation_bp.route('/<simulation_id>/actions', methods=['GET'])
 def get_simulation_actions(simulation_id: str):
     """
-    获取模拟中的Agent动作历史
-    
-    Query参数：
-        limit: 返回数量（默认100）
-        offset: 偏移量（默认0）
-        platform: 过滤平台（twitter）
-        agent_id: 过滤Agent ID
-        round_num: 过滤轮次
-    
-    返回：
+    Get the agent action history for a simulation.
+
+    Query parameters:
+        limit: number of results to return (default 100)
+        offset: starting offset (default 0)
+        platform: filter by platform (twitter)
+        agent_id: filter by agent ID
+        round_num: filter by round number
+
+    Returns:
         {
             "success": true,
             "data": {
@@ -1889,7 +1889,7 @@ def get_simulation_actions(simulation_id: str):
         })
         
     except Exception as e:
-        logger.error(f"获取动作历史失败: {str(e)}")
+        logger.error(f"Failed to get action history: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -1900,15 +1900,15 @@ def get_simulation_actions(simulation_id: str):
 @simulation_bp.route('/<simulation_id>/timeline', methods=['GET'])
 def get_simulation_timeline(simulation_id: str):
     """
-    获取模拟时间线（按轮次汇总）
-    
-    用于前端展示进度条和时间线视图
-    
-    Query参数：
-        start_round: 起始轮次（默认0）
-        end_round: 结束轮次（默认全部）
-    
-    返回每轮的汇总信息
+    Get the simulation timeline (summarised by round).
+
+    Used for the frontend progress bar and timeline view.
+
+    Query parameters:
+        start_round: starting round (default 0)
+        end_round: ending round (default: all)
+
+    Returns per-round summary information.
     """
     try:
         start_round = request.args.get('start_round', 0, type=int)
@@ -1929,7 +1929,7 @@ def get_simulation_timeline(simulation_id: str):
         })
         
     except Exception as e:
-        logger.error(f"获取时间线失败: {str(e)}")
+        logger.error(f"Failed to get timeline: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
@@ -1940,9 +1940,9 @@ def get_simulation_timeline(simulation_id: str):
 @simulation_bp.route('/<simulation_id>/agent-stats', methods=['GET'])
 def get_agent_stats(simulation_id: str):
     """
-    获取每个Agent的统计信息
-    
-    用于前端展示Agent活跃度排行、动作分布等
+    Get per-agent statistics for a simulation.
+
+    Used for agent activity ranking and action distribution displays in the frontend.
     """
     try:
         stats = SimulationRunner.get_agent_stats(simulation_id)
@@ -1956,7 +1956,7 @@ def get_agent_stats(simulation_id: str):
         })
         
     except Exception as e:
-        logger.error(f"获取Agent统计失败: {str(e)}")
+        logger.error(f"Failed to get agent statistics: {str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),

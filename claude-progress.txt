@@ -3,6 +3,13 @@ Branch: redline/phase2-polish
 
 ## Completed this session
 
+### Task 010 — Translate to_text() methods to match frontend parsers (complete)
+- `InsightForgeResult.to_text()`: Chinese headers → English (`### Sub-Queries`, `### [Key Facts]`, `### [Core Entities]`, `### [Relationship Chains]`, `Relationship Chains: N`)
+- `PanoramaResult.to_text()`: Chinese headers → English (`### [Active Facts]`, `Active Facts: N`, `### [Historical/Expired Facts]`, `### [Entities Involved]`)
+- `AgentInterview.to_text()`: `_简介:` → `_Bio:`, `**关键引言:**` → `**Key Quotes:**`
+- `InterviewResult.to_text()`: All headers translated (`**Interview Topic:**`, `**Interviewees:** N / M`, `### Selection Rationale`, `### Interview Transcripts`, `#### Interview #N:`, `### Interview Summary & Key Insights`)
+- Backend imports cleanly, frontend build: 666 modules, 0 errors
+
 ### Task 004 — English UI labels (complete)
 - Step3Simulation.vue: all Chinese UI strings translated (button text, log messages, JS/HTML comments)
 - GraphPanel.vue: tooltip titles, hint text, loading/empty state text
