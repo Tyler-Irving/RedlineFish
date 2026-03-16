@@ -122,7 +122,7 @@
               <button class="modal-close" @click="closeModal">×</button>
             </div>
 
-            <!-- 弹窗内容 -->
+            <!-- Modal body -->
             <div class="modal-body">
               <!-- Simulation requirement -->
               <div class="modal-section">
@@ -150,7 +150,7 @@
               <span class="divider-line"></span>
             </div>
 
-            <!-- 导航按钮 -->
+            <!-- Navigation buttons -->
             <div class="modal-actions">
               <button 
                 class="modal-btn btn-project" 
@@ -179,7 +179,7 @@
                 <span class="btn-text">Report</span>
               </button>
             </div>
-            <!-- 不可回放提示 -->
+            <!-- Non-replayable stage hint -->
             <div class="modal-playback-hint">
               <span class="hint-text">Simulate and Interview stages must be launched from an active run and do not support replay</span>
             </div>
