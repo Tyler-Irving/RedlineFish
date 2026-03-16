@@ -396,9 +396,9 @@ const renderGraph = () => {
     const isSelfLoop = e.source_node_uuid === e.target_node_uuid
     
     if (isSelfLoop) {
-      // 自环边 - 每个节点只添加一条合并的自环
+      // Self-loop edge — add only one merged self-loop per node
       if (processedSelfLoopNodes.has(e.source_node_uuid)) {
-        return // 已处理过，跳过
+        return // already processed, skip
       }
       processedSelfLoopNodes.add(e.source_node_uuid)
       
