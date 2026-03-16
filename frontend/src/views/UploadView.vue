@@ -385,7 +385,7 @@ const runPrepare = async () => {
   const res = await prepareSimulation({
     simulation_id: simulationId.value,
     use_llm_for_profiles: true,
-    parallel_profile_count: agentCount.value,
+    max_agents: agentCount.value,
     force_regenerate: false
   })
   if (!res.success) throw new Error(res.error || 'prepareSimulation failed')
