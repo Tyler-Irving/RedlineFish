@@ -2018,7 +2018,7 @@ watch(() => props.simulationId, (newId) => {
   margin-bottom: 0;
 }
 
-/* 修复有序列表编号 - 使用 CSS 计数器让多个 ol 连续编号 */
+/* Fix ordered list numbering - use CSS counters for consecutive numbering across multiple ol elements */
 .message-text {
   counter-reset: list-counter;
 }
