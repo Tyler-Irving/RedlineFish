@@ -222,7 +222,6 @@ class ZepGraphMemoryUpdater:
     # Platform display name mapping (for console output)
     PLATFORM_DISPLAY_NAMES = {
         'twitter': 'Twitter',
-        'reddit': 'Reddit',
     }
 
     # Send interval (seconds) to avoid sending requests too quickly
@@ -254,7 +253,6 @@ class ZepGraphMemoryUpdater:
         # Per-platform activity buffers (each platform accumulates up to BATCH_SIZE before sending)
         self._platform_buffers: Dict[str, List[AgentActivity]] = {
             'twitter': [],
-            'reddit': [],
         }
         self._buffer_lock = threading.Lock()
 

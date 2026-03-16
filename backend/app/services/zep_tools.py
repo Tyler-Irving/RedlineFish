@@ -1359,37 +1359,36 @@ class ZepToolsService:
 
         # Add an optimisation prefix to constrain the agent's reply format
         INTERVIEW_PROMPT_PREFIX = (
-            "你正在接受一次采访。请结合你的人设、所有的过往记忆与行动，"
-            "以纯文本方式直接回答以下问题。\n"
-            "回复要求：\n"
-            "1. 直接用自然语言回答，不要调用任何工具\n"
-            "2. 不要返回JSON格式或工具调用格式\n"
-            "3. 不要使用Markdown标题（如#、##、###）\n"
-            "4. 按问题编号逐一回答，每个回答以「问题X：」开头（X为问题编号）\n"
-            "5. 每个问题的回答之间用空行分隔\n"
-            "6. 回答要有实质内容，每个问题至少回答2-3句话\n\n"
+            "You are being interviewed. Drawing on your persona, all past memories "
+            "and actions, answer the following questions directly in plain text.\n"
+            "Response rules:\n"
+            "1. Answer naturally in plain text — do not call any tools\n"
+            "2. Do not return JSON or tool-call format\n"
+            "3. Do not use Markdown headings (#, ##, ###)\n"
+            "4. Answer each question in order, starting each answer with 'Question X:'\n"
+            "5. Leave a blank line between answers\n"
+            "6. Give substantive answers — at least 2-3 sentences per question\n\n"
         )
         optimized_prompt = f"{INTERVIEW_PROMPT_PREFIX}{combined_prompt}"
 
-        # Step 4: Call the real interview API (no platform specified — both platforms simultaneously)
+        # Step 4: Call the real interview API (Twitter platform)
         try:
-            # Build the batch interview request (no platform specified — dual-platform interview)
+            # Build the batch interview request
             interviews_request = []
             for agent_idx in selected_indices:
                 interviews_request.append({
                     "agent_id": agent_idx,
-                    "prompt": optimized_prompt  # use the optimised prompt
-                    # No platform specified — the API will interview on both twitter and reddit
+                    "prompt": optimized_prompt
                 })
 
-            logger.info(f"Calling batch interview API (dual-platform): {len(interviews_request)} agents")
+            logger.info(f"Calling batch interview API: {len(interviews_request)} agents")
 
-            # Call SimulationRunner's batch interview method (no platform — dual-platform interview)
+            # Call SimulationRunner's batch interview method (Twitter platform)
             api_result = SimulationRunner.interview_agents_batch(
                 simulation_id=simulation_id,
                 interviews=interviews_request,
-                platform=None,  # no platform specified — dual-platform interview
-                timeout=180.0   # dual-platform needs a longer timeout
+                platform='twitter',
+                timeout=120.0
             )
 
             logger.info(f"Interview API returned: {api_result.get('interviews_count', 0)} results, success={api_result.get('success')}")
@@ -1402,59 +1401,48 @@ class ZepToolsService:
                 return result
 
             # Step 5: Parse API results and build AgentInterview objects
-            # Dual-platform mode returns format: {"twitter_0": {...}, "reddit_0": {...}, "twitter_1": {...}, ...}
+            # Twitter-only format: {"twitter_0": {...}, "twitter_1": {...}, ...}
             api_data = api_result.get("result", {})
             results_dict = api_data.get("results", {}) if isinstance(api_data, dict) else {}
 
             for i, agent_idx in enumerate(selected_indices):
                 agent = selected_agents[i]
                 agent_name = agent.get("realname", agent.get("username", f"Agent_{agent_idx}"))
-                agent_role = agent.get("profession", "未知")
+                agent_role = agent.get("profession", "Unknown")
                 agent_bio = agent.get("bio", "")
 
-                # Get this agent's interview results from both platforms
+                # Get this agent's Twitter interview result
                 twitter_result = results_dict.get(f"twitter_{agent_idx}", {})
-                reddit_result = results_dict.get(f"reddit_{agent_idx}", {})
-
-                twitter_response = twitter_result.get("response", "")
-                reddit_response = reddit_result.get("response", "")
+                response = twitter_result.get("response", "")
 
                 # Clean up possible tool-call JSON wrappers
-                twitter_response = self._clean_tool_call_response(twitter_response)
-                reddit_response = self._clean_tool_call_response(reddit_response)
+                response = self._clean_tool_call_response(response)
+                response_text = response if response else "(No response received)"
 
-                # Always output dual-platform markers
-                twitter_text = twitter_response if twitter_response else "（该平台未获得回复）"
-                reddit_text = reddit_response if reddit_response else "（该平台未获得回复）"
-                response_text = f"【Twitter平台回答】\n{twitter_text}\n\n【Reddit平台回答】\n{reddit_text}"
-
-                # Extract key quotes (from both platforms' responses)
+                # Extract key quotes from the response
                 import re
-                combined_responses = f"{twitter_response} {reddit_response}"
-
-                # Clean response text: remove markers, numbering, Markdown, etc.
-                clean_text = re.sub(r'#{1,6}\s+', '', combined_responses)
+                # Clean response text: remove Markdown, numbering, etc.
+                clean_text = re.sub(r'#{1,6}\s+', '', response)
                 clean_text = re.sub(r'\{[^}]*tool_name[^}]*\}', '', clean_text)
                 clean_text = re.sub(r'[*_`|>~\-]{2,}', '', clean_text)
-                clean_text = re.sub(r'问题\d+[：:]\s*', '', clean_text)
-                clean_text = re.sub(r'【[^】]+】', '', clean_text)
+                clean_text = re.sub(r'Question\s*\d+[:\s]+', '', clean_text)
 
                 # Strategy 1 (primary): extract full sentences with meaningful content
-                sentences = re.split(r'[。！？]', clean_text)
+                sentences = re.split(r'[.!?]', clean_text)
                 meaningful = [
                     s.strip() for s in sentences
                     if 20 <= len(s.strip()) <= 150
-                    and not re.match(r'^[\s\W，,；;：:、]+', s.strip())
-                    and not s.strip().startswith(('{', '问题'))
+                    and not re.match(r'^[\s\W,;:]+', s.strip())
+                    and not s.strip().startswith('{')
                 ]
                 meaningful.sort(key=len, reverse=True)
-                key_quotes = [s + "。" for s in meaningful[:3]]
+                key_quotes = [s + "." for s in meaningful[:3]]
 
-                # Strategy 2 (supplement): correctly paired Chinese quotation marks 「」 with long text
+                # Strategy 2 (supplement): extract quoted text
                 if not key_quotes:
-                    paired = re.findall(r'\u201c([^\u201c\u201d]{15,100})\u201d', clean_text)
-                    paired += re.findall(r'\u300c([^\u300c\u300d]{15,100})\u300d', clean_text)
-                    key_quotes = [q for q in paired if not re.match(r'^[，,；;：:、]', q)][:3]
+                    paired = re.findall(r'"([^"]{15,100})"', clean_text)
+                    paired += re.findall(r'\u201c([^\u201c\u201d]{15,100})\u201d', clean_text)
+                    key_quotes = [q for q in paired if not re.match(r'^[,;:]', q)][:3]
 
                 interview = AgentInterview(
                     agent_name=agent_name,
@@ -1487,7 +1475,7 @@ class ZepToolsService:
                 interview_requirement=interview_requirement
             )
 
-        logger.info(f"InterviewAgents complete: interviewed {result.interviewed_count} agents (dual-platform)")
+        logger.info(f"InterviewAgents complete: interviewed {result.interviewed_count} agents")
         return result
 
     @staticmethod
@@ -1524,31 +1512,19 @@ class ZepToolsService:
 
         profiles = []
 
-        # Prefer Reddit JSON format
-        reddit_profile_path = os.path.join(sim_dir, "reddit_profiles.json")
-        if os.path.exists(reddit_profile_path):
-            try:
-                with open(reddit_profile_path, 'r', encoding='utf-8') as f:
-                    profiles = json.load(f)
-                logger.info(f"Loaded {len(profiles)} personas from reddit_profiles.json")
-                return profiles
-            except Exception as e:
-                logger.warning(f"Failed to read reddit_profiles.json: {e}")
-
-        # Fall back to Twitter CSV format
+        # Load Twitter CSV profile file
         twitter_profile_path = os.path.join(sim_dir, "twitter_profiles.csv")
         if os.path.exists(twitter_profile_path):
             try:
                 with open(twitter_profile_path, 'r', encoding='utf-8') as f:
                     reader = csv.DictReader(f)
                     for row in reader:
-                        # Convert CSV format to a unified format
                         profiles.append({
                             "realname": row.get("name", ""),
                             "username": row.get("username", ""),
                             "bio": row.get("description", ""),
                             "persona": row.get("user_char", ""),
-                            "profession": "未知"
+                            "profession": "Unknown"
                         })
                 logger.info(f"Loaded {len(profiles)} personas from twitter_profiles.csv")
                 return profiles
