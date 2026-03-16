@@ -1,6 +1,6 @@
 # Task 004 — Replace Chinese UI Labels with English
 
-**Status**: not started
+**Status**: complete
 **Phase**: 2
 **Priority**: medium
 

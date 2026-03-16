@@ -677,7 +677,7 @@ const sendMessage = async () => {
 }
 
 const sendToReportAgent = async (message) => {
-  addLog(`向 Report Agent 发送: ${message.substring(0, 50)}...`)
+  addLog(`Sending to Report Agent: ${message.substring(0, 50)}...`)
   
   // Build chat history for API
   const historyForApi = chatHistory.value
@@ -711,7 +711,7 @@ const sendToAgent = async (message) => {
     throw new Error('Please select a simulated individual first')
   }
   
-  addLog(`向 ${selectedAgent.value.username} 发送: ${message.substring(0, 50)}...`)
+  addLog(`Sending to ${selectedAgent.value.username}: ${message.substring(0, 50)}...`)
   
   // Build prompt with chat history
   let prompt = message
@@ -2044,7 +2044,7 @@ watch(() => props.simulationId, (newId) => {
   flex-shrink: 0;
 }
 
-/* 无序列表样式 */
+/* Unordered list styles */
 .message-text :deep(.md-ul) {
   padding-left: 20px;
   margin: 8px 0;
@@ -2523,7 +2523,7 @@ watch(() => props.simulationId, (newId) => {
   margin: 6px 0;
 }
 
-/* 聊天/问卷区域的引用样式 */
+/* Quote styles for chat and survey areas */
 .chat-messages :deep(.md-quote),
 .result-answer :deep(.md-quote) {
   margin: 12px 0;

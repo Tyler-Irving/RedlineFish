@@ -15,7 +15,7 @@
       <section class="hero-section">
         <div class="hero-left">
           <div class=”tag-row”>
-            <span class=”orange-tag”>Strategy Red-Teaming</span>
+            <span class=”accent-tag”>Strategy Red-Teaming</span>
             <span class=”version-text”>/ v0.1-preview</span>
           </div>
 
@@ -286,7 +286,7 @@ const startSimulation = () => {
 :root {
   --black: #000000;
   --white: #FFFFFF;
-  --orange: #FF4500;
+  --accent: #DC2626;
   --gray-light: #F5F5F5;
   --gray-text: #666666;
   --border: #E5E5E5;
@@ -378,8 +378,8 @@ const startSimulation = () => {
   font-size: 0.8rem;
 }
 
-.orange-tag {
-  background: var(--orange);
+.accent-tag {
+  background: var(--accent);
   color: var(--white);
   padding: 4px 10px;
   font-weight: 700;
@@ -428,8 +428,8 @@ const startSimulation = () => {
   font-weight: 700;
 }
 
-.highlight-orange {
-  color: var(--orange);
+.highlight-accent {
+  color: var(--accent);
   font-weight: 700;
   font-family: var(--font-mono);
 }
@@ -449,13 +449,13 @@ const startSimulation = () => {
   font-weight: 520;
   color: var(--black);
   letter-spacing: 1px;
-  border-left: 3px solid var(--orange);
+  border-left: 3px solid var(--accent);
   padding-left: 15px;
   margin-top: 20px;
 }
 
 .blinking-cursor {
-  color: var(--orange);
+  color: var(--accent);
   animation: blink 1s step-end infinite;
   font-weight: 700;
 }
@@ -468,7 +468,7 @@ const startSimulation = () => {
 .decoration-square {
   width: 16px;
   height: 16px;
-  background: var(--orange);
+  background: var(--accent);
 }
 
 .hero-right {
@@ -506,13 +506,13 @@ const startSimulation = () => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--orange);
+  color: var(--accent);
   font-size: 1.2rem;
   transition: all 0.2s;
 }
 
 .scroll-down-btn:hover {
-  border-color: var(--orange);
+  border-color: var(--accent);
 }
 
 /* Dashboard two-column layout */
@@ -546,7 +546,7 @@ const startSimulation = () => {
 }
 
 .status-dot {
-  color: var(--orange);
+  color: var(--accent);
   font-size: 0.8rem;
 }
 
@@ -825,8 +825,8 @@ const startSimulation = () => {
 }
 
 .start-engine-btn:hover:not(:disabled) {
-  background: var(--orange);
-  border-color: var(--orange);
+  background: var(--accent);
+  border-color: var(--accent);
   transform: translateY(-2px);
 }
 
