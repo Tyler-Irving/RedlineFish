@@ -703,7 +703,7 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
-/* 功能状态图标组 */
+/* Feature status icon group */
 .card-status-icons {
   display: flex;
   align-items: center;
@@ -720,17 +720,17 @@ onUnmounted(() => {
   opacity: 1;
 }
 
-/* 不同功能的颜色 */
-.status-icon:nth-child(1).available { color: #3B82F6; } /* 图谱构建 - 蓝色 */
-.status-icon:nth-child(2).available { color: #F59E0B; } /* 环境搭建 - 橙色 */
-.status-icon:nth-child(3).available { color: #10B981; } /* 分析报告 - 绿色 */
+/* Colors per feature */
+.status-icon:nth-child(1).available { color: #3B82F6; } /* Graph Build - blue */
+.status-icon:nth-child(2).available { color: #F59E0B; } /* Agent Setup - orange */
+.status-icon:nth-child(3).available { color: #10B981; } /* Report - green */
 
 .status-icon.unavailable {
   color: #D1D5DB;
   opacity: 0.5;
 }
 
-/* 轮数进度显示 */
+/* Round progress display */
 .card-progress {
   display: flex;
   align-items: center;
@@ -744,13 +744,13 @@ onUnmounted(() => {
   font-size: 0.5rem;
 }
 
-/* 进度状态颜色 */
-.card-progress.completed { color: #10B981; }    /* 已完成 - 绿色 */
-.card-progress.in-progress { color: #F59E0B; }  /* 进行中 - 橙色 */
-.card-progress.not-started { color: #9CA3AF; }  /* 未开始 - 灰色 */
+/* Progress status colors */
+.card-progress.completed { color: #10B981; }    /* Completed - green */
+.card-progress.in-progress { color: #F59E0B; }  /* In progress - orange */
+.card-progress.not-started { color: #9CA3AF; }  /* Not started - gray */
 .card-status.pending { color: #9CA3AF; }
 
-/* 文件列表区域 */
+/* File list area */
 .card-files-wrapper {
   position: relative;
   width: 100%;
@@ -770,7 +770,7 @@ onUnmounted(() => {
   gap: 4px;
 }
 
-/* 更多文件提示 */
+/* More files indicator */
 .files-more {
   display: flex;
   align-items: center;
