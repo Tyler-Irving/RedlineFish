@@ -1,3 +1,32 @@
+Session 7 — 2026-03-16
+Branch: main (phase1-strip merged via PR #1)
+
+## Phase 1 complete — merged to main
+
+PR #1 merged at 2026-03-16T00:14:52Z. All TASK.md findings resolved.
+Review verdict was SHIP IT (no blockers).
+
+## What landed in main
+
+- Reddit fully stripped from all code paths (backend + frontend)
+- 3-stage pipeline: Upload → Simulate → Explore (was 5-stage)
+- Provider-agnostic LLM client (LLM_API_KEY / LLM_BASE_URL / LLM_MODEL_NAME)
+- Redline branding throughout
+- All Chinese comments translated to English
+
+## Next phase
+
+Phase 2 tasks tracked in TASKS/:
+- 001: README branding cleanup
+- 003: Delete dead view files
+- 004: English UI labels (Home.vue, GraphPanel loading text, Step3Simulation log)
+- 006: Agent count defaults
+- 007: Simulation round defaults
+- 008: Cleanup redundant flags
+- 009: Frontend styling polish
+
+---
+
 Session 6 — 2026-03-15
 Branch: redline/phase1-strip
 
