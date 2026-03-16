@@ -1,3 +1,36 @@
+Session 9 — 2026-03-15
+Branch: redline/phase3-cleanup
+
+## Completed this session
+
+### Task 008 — Cleanup Redundant Flags and Dead Code (complete)
+
+**zep_tools.py** (`interview_agents` method):
+- Translated INTERVIEW_PROMPT_PREFIX from Chinese to English
+- Simplified from dual-platform to Twitter-only: `platform='twitter'`, 120s timeout
+- Removed dual-platform result key parsing (reddit_0, twitter/reddit markers)
+- Removed Chinese platform output markers
+- Simplified key-quote extraction to work on single Twitter response
+- Switched sentence splitter to English punctuation (.!?)
+- `_load_agent_profiles`: removed reddit_profiles.json branch, CSV only, "Unknown" fallback
+
+**zep_graph_memory_updater.py**:
+- Removed 'reddit' from PLATFORM_DISPLAY_NAMES and _platform_buffers init
+
+**--twitter-only flag**: already removed in Phase 1
+**platform field on AgentAction**: kept — frontend uses it for CSS class + icon display
+
+Build: clean. Backend: imports OK.
+
+## Current state
+Branch: redline/phase3-cleanup (2 commits ahead of main)
+All TASKS now complete: 004 ✓ 006 ✓ 007 ✓ 008 ✓ 009 ✓
+
+## Next actions
+- /review then push + merge phase3-cleanup to main
+
+---
+
 Session 8 — 2026-03-15
 Branch: redline/phase2-polish
 
