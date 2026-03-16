@@ -171,40 +171,40 @@ class InsightForgeResult:
     def to_text(self) -> str:
         """Convert to detailed text format for LLM consumption."""
         text_parts = [
-            f"## 未来预测深度分析",
-            f"分析问题: {self.query}",
-            f"预测场景: {self.simulation_requirement}",
-            f"\n### 预测数据统计",
-            f"- 相关预测事实: {self.total_facts}条",
-            f"- 涉及实体: {self.total_entities}个",
-            f"- 关系链: {self.total_relationships}条"
+            f"## Deep Predictive Analysis",
+            f"Query: {self.query}",
+            f"Simulation Context: {self.simulation_requirement}",
+            f"\n### Statistics",
+            f"- Related Facts: {self.total_facts}",
+            f"- Entities: {self.total_entities}",
+            f"- Relationship Chains: {self.total_relationships}"
         ]
 
         # Sub-questions
         if self.sub_queries:
-            text_parts.append(f"\n### 分析的子问题")
+            text_parts.append(f"\n### Sub-Queries")
             for i, sq in enumerate(self.sub_queries, 1):
                 text_parts.append(f"{i}. {sq}")
 
         # Semantic search results
         if self.semantic_facts:
-            text_parts.append(f"\n### 【关键事实】(请在报告中引用这些原文)")
+            text_parts.append(f"\n### [Key Facts]")
             for i, fact in enumerate(self.semantic_facts, 1):
                 text_parts.append(f"{i}. \"{fact}\"")
 
         # Entity insights
         if self.entity_insights:
-            text_parts.append(f"\n### 【核心实体】")
+            text_parts.append(f"\n### [Core Entities]")
             for entity in self.entity_insights:
-                text_parts.append(f"- **{entity.get('name', '未知')}** ({entity.get('type', '实体')})")
+                text_parts.append(f"- **{entity.get('name', 'Unknown')}** ({entity.get('type', 'Entity')})")
                 if entity.get('summary'):
-                    text_parts.append(f"  摘要: \"{entity.get('summary')}\"")
+                    text_parts.append(f"  Summary: \"{entity.get('summary')}\"")
                 if entity.get('related_facts'):
-                    text_parts.append(f"  相关事实: {len(entity.get('related_facts', []))}条")
+                    text_parts.append(f"  Related Facts: {len(entity.get('related_facts', []))}")
 
         # Relationship chains
         if self.relationship_chains:
-            text_parts.append(f"\n### 【关系链】")
+            text_parts.append(f"\n### [Relationship Chains]")
             for chain in self.relationship_chains:
                 text_parts.append(f"- {chain}")
 
@@ -250,32 +250,32 @@ class PanoramaResult:
     def to_text(self) -> str:
         """Convert to text format (full version, no truncation)."""
         text_parts = [
-            f"## 广度搜索结果（未来全景视图）",
-            f"查询: {self.query}",
-            f"\n### 统计信息",
-            f"- 总节点数: {self.total_nodes}",
-            f"- 总边数: {self.total_edges}",
-            f"- 当前有效事实: {self.active_count}条",
-            f"- 历史/过期事实: {self.historical_count}条"
+            f"## Panorama Search Results",
+            f"Query: {self.query}",
+            f"\n### Statistics",
+            f"- Total Nodes: {self.total_nodes}",
+            f"- Total Edges: {self.total_edges}",
+            f"- Active Facts: {self.active_count}",
+            f"- Historical/Expired Facts: {self.historical_count}"
         ]
 
         # Current valid facts (full output, no truncation)
         if self.active_facts:
-            text_parts.append(f"\n### 【当前有效事实】(模拟结果原文)")
+            text_parts.append(f"\n### [Active Facts]")
             for i, fact in enumerate(self.active_facts, 1):
                 text_parts.append(f"{i}. \"{fact}\"")
 
         # Historical/expired facts (full output, no truncation)
         if self.historical_facts:
-            text_parts.append(f"\n### 【历史/过期事实】(演变过程记录)")
+            text_parts.append(f"\n### [Historical/Expired Facts]")
             for i, fact in enumerate(self.historical_facts, 1):
                 text_parts.append(f"{i}. \"{fact}\"")
 
         # Key entities (full output, no truncation)
         if self.all_nodes:
-            text_parts.append(f"\n### 【涉及实体】")
+            text_parts.append(f"\n### [Entities Involved]")
             for node in self.all_nodes:
-                entity_type = next((l for l in node.labels if l not in ["Entity", "Node"]), "实体")
+                entity_type = next((l for l in node.labels if l not in ["Entity", "Node"]), "Entity")
                 text_parts.append(f"- **{node.name}** ({entity_type})")
 
         return "\n".join(text_parts)
@@ -304,11 +304,11 @@ class AgentInterview:
     def to_text(self) -> str:
         text = f"**{self.agent_name}** ({self.agent_role})\n"
         # Display full agent_bio without truncation
-        text += f"_简介: {self.agent_bio}_\n\n"
+        text += f"_Bio: {self.agent_bio}_\n\n"
         text += f"**Q:** {self.question}\n\n"
         text += f"**A:** {self.response}\n"
         if self.key_quotes:
-            text += "\n**关键引言:**\n"
+            text += "\n**Key Quotes:**\n"
             for quote in self.key_quotes:
                 # Strip various quotation marks
                 clean_quote = quote.replace('\u201c', '').replace('\u201d', '').replace('"', '')
@@ -375,25 +375,25 @@ class InterviewResult:
     def to_text(self) -> str:
         """Convert to detailed text format for LLM consumption and report citation."""
         text_parts = [
-            "## 深度采访报告",
-            f"**采访主题:** {self.interview_topic}",
-            f"**采访人数:** {self.interviewed_count} / {self.total_agents} 位模拟Agent",
-            "\n### 采访对象选择理由",
-            self.selection_reasoning or "（自动选择）",
+            "## Deep Interview Report",
+            f"**Interview Topic:** {self.interview_topic}",
+            f"**Interviewees:** {self.interviewed_count} / {self.total_agents}",
+            "\n### Selection Rationale",
+            self.selection_reasoning or "(Auto-selected)",
             "\n---",
-            "\n### 采访实录",
+            "\n### Interview Transcripts",
         ]
 
         if self.interviews:
             for i, interview in enumerate(self.interviews, 1):
-                text_parts.append(f"\n#### 采访 #{i}: {interview.agent_name}")
+                text_parts.append(f"\n#### Interview #{i}: {interview.agent_name}")
                 text_parts.append(interview.to_text())
                 text_parts.append("\n---")
         else:
-            text_parts.append("（无采访记录）\n\n---")
+            text_parts.append("(No interview records)\n\n---")
 
-        text_parts.append("\n### 采访摘要与核心观点")
-        text_parts.append(self.summary or "（无摘要）")
+        text_parts.append("\n### Interview Summary & Key Insights")
+        text_parts.append(self.summary or "(No summary)")
 
         return "\n".join(text_parts)
 
