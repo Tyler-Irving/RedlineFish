@@ -1,0 +1,48 @@
+Session 6 — 2026-03-15
+Branch: redline/phase1-strip
+
+## Completed this session
+
+### Pre-PR review fixes (TASK.md)
+
+1. **BLOCKER FIXED: `waitForPrepareTask` timer leak** — UploadView.vue
+   - Added `let preparePollTimer = null` at module level
+   - Replaced local `const timer` with `preparePollTimer` assignment
+   - Added cleanup in `onUnmounted`
+
+2. **Fixed broken graph refresh** — ExploreView.vue
+   - Added `graphId` ref, populated during `loadData`
+   - `refreshGraph` now uses stored `graphId` instead of non-existent `graphData.value.graph_id`
+
+3. **Guarded `dataReady` against failed report fetch** — ExploreView.vue
+   - Moved `dataReady.value = true` into success path (out of `finally`)
+   - Added `loadError` ref and error UI with retry button
+   - Children no longer mount with null IDs on fetch failure
+
+4. **Narrowed `chat_json` exception catch** — llm_client.py
+   - Imported `BadRequestError` and `APIError` from openai
+   - Only catches 400-status errors (provider format incompatibility)
+   - Auth, network, and other errors now propagate correctly
+
+5. **Profile generator uses `chat_json()`** — oasis_profile_generator.py
+   - Replaced `chat()` + manual `json.loads()` with `chat_json()`
+   - Removed manual `response_format` kwarg (handled internally)
+   - `chat_json` handles fence stripping and provider fallback
+   - Translated remaining Chinese log messages in this area
+
+### Verification
+
+- Backend imports cleanly (`create_app()` succeeds)
+- Frontend builds cleanly (666 modules, 0 errors)
+- LLM client imports correctly with new openai error types
+
+## Previous session work (Session 5)
+
+- Fixed `frontend/index.html` — lang="en", Redline title/description
+- Translated remaining Chinese comments across backend
+- Verified full stack (backend, frontend, API, proxy)
+- Confirmed 3-stage router and Redline branding
+
+## Next action
+
+Commit fixes, run /review to verify all findings addressed, then create PR.

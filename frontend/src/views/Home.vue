@@ -2,10 +2,10 @@
   <div class="home-container">
     <!-- 顶部导航栏 -->
     <nav class="navbar">
-      <div class="nav-brand">MIROFISH</div>
+      <div class="nav-brand">REDLINE</div>
       <div class="nav-links">
-        <a href="https://github.com/666ghj/MiroFish" target="_blank" class="github-link">
-          访问我们的Github主页 <span class="arrow">↗</span>
+        <a href="https://github.com/Tyler-Irving/RedlineFish" target="_blank" class="github-link">
+          View on GitHub <span class="arrow">↗</span>
         </a>
       </div>
     </nav>
@@ -14,22 +14,22 @@
       <!-- 上半部分：Hero 区域 -->
       <section class="hero-section">
         <div class="hero-left">
-          <div class="tag-row">
-            <span class="orange-tag">简洁通用的群体智能引擎</span>
-            <span class="version-text">/ v0.1-预览版</span>
+          <div class=”tag-row”>
+            <span class=”orange-tag”>Strategy Red-Teaming</span>
+            <span class=”version-text”>/ v0.1-preview</span>
           </div>
-          
-          <h1 class="main-title">
-            上传任意报告<br>
-            <span class="gradient-text">即刻推演未来</span>
+
+          <h1 class=”main-title”>
+            Upload your pitch deck.<br>
+            <span class=”gradient-text”>See how the crowd reacts.</span>
           </h1>
-          
-          <div class="hero-desc">
+
+          <div class=”hero-desc”>
             <p>
-              即使只有一段文字，<span class="highlight-bold">MiroFish</span> 也能基于其中的现实种子，全自动生成与之对应的至多<span class="highlight-orange">百万级Agent</span>构成的平行世界。通过上帝视角注入变量，在复杂的群体交互中寻找动态环境下的<span class="highlight-code">“局部最优解”</span>
+              <span class=”highlight-bold”>Redline</span> simulates how diverse audiences — early adopters, skeptics, journalists, investors — respond to your startup launch or marketing campaign on social media. Get signal before you ship.
             </p>
-            <p class="slogan-text">
-              让未来在 Agent 群中预演，让决策在百战后胜出<span class="blinking-cursor">_</span>
+            <p class=”slogan-text”>
+              Battle-test your strategy before the world sees it.<span class=”blinking-cursor”>_</span>
             </p>
           </div>
            
@@ -37,9 +37,8 @@
         </div>
         
         <div class="hero-right">
-          <!-- Logo 区域 -->
           <div class="logo-container">
-            <img src="../assets/logo/MiroFish_logo_left.jpeg" alt="MiroFish Logo" class="hero-logo" />
+            <div class="hero-logo-text">R_</div>
           </div>
           
           <button class="scroll-down-btn" @click="scrollToBottom">
@@ -53,65 +52,50 @@
         <!-- 左栏：状态与步骤 -->
         <div class="left-panel">
           <div class="panel-header">
-            <span class="status-dot">■</span> 系统状态
+            <span class="status-dot">■</span> System Status
           </div>
           
-          <h2 class="section-title">准备就绪</h2>
+          <h2 class="section-title">Ready</h2>
           <p class="section-desc">
-            预测引擎待命中，可上传多份非结构化数据以初始化模拟序列
+            Engine on standby. Upload one or more documents to initialize a simulation.
           </p>
           
           <!-- 数据指标卡片 -->
           <div class="metrics-row">
             <div class="metric-card">
-              <div class="metric-value">低成本</div>
-              <div class="metric-label">常规模拟平均5$/次</div>
+              <div class="metric-value">~$5</div>
+              <div class="metric-label">per simulation</div>
             </div>
             <div class="metric-card">
-              <div class="metric-value">高可用</div>
-              <div class="metric-label">最多百万级Agent模拟</div>
+              <div class="metric-value">50–80</div>
+              <div class="metric-label">diverse agents</div>
             </div>
           </div>
 
-          <!-- 项目模拟步骤介绍 (新增区域) -->
           <div class="steps-container">
             <div class="steps-header">
-               <span class="diamond-icon">◇</span> 工作流序列
+              <span class="diamond-icon">◇</span> Workflow
             </div>
             <div class="workflow-list">
               <div class="workflow-item">
                 <span class="step-num">01</span>
                 <div class="step-info">
-                  <div class="step-title">图谱构建</div>
-                  <div class="step-desc">现实种子提取 & 个体与群体记忆注入 & GraphRAG构建</div>
+                  <div class="step-title">Upload</div>
+                  <div class="step-desc">Upload pitch deck, landing page, or campaign brief. Redline builds a knowledge graph and generates agent personas automatically.</div>
                 </div>
               </div>
               <div class="workflow-item">
                 <span class="step-num">02</span>
                 <div class="step-info">
-                  <div class="step-title">环境搭建</div>
-                  <div class="step-desc">实体关系抽取 & 人设生成 & 环境配置Agent注入仿真参数</div>
+                  <div class="step-title">Simulate</div>
+                  <div class="step-desc">Agents interact on a Twitter-style feed, forming opinions, sharing content, and influencing each other over simulated time.</div>
                 </div>
               </div>
               <div class="workflow-item">
                 <span class="step-num">03</span>
                 <div class="step-info">
-                  <div class="step-title">开始模拟</div>
-                  <div class="step-desc">双平台并行模拟 & 自动解析预测需求 & 动态更新时序记忆</div>
-                </div>
-              </div>
-              <div class="workflow-item">
-                <span class="step-num">04</span>
-                <div class="step-info">
-                  <div class="step-title">报告生成</div>
-                  <div class="step-desc">ReportAgent拥有丰富的工具集与模拟后环境进行深度交互</div>
-                </div>
-              </div>
-              <div class="workflow-item">
-                <span class="step-num">05</span>
-                <div class="step-info">
-                  <div class="step-title">深度互动</div>
-                  <div class="step-desc">与模拟世界中的任意一位进行对话 & 与ReportAgent进行对话</div>
+                  <div class="step-title">Explore</div>
+                  <div class="step-desc">Read the AI-generated strategy report, then interview any agent directly to understand the reasoning behind their reaction.</div>
                 </div>
               </div>
             </div>
@@ -124,8 +108,8 @@
             <!-- 上传区域 -->
             <div class="console-section">
               <div class="console-header">
-                <span class="console-label">01 / 现实种子</span>
-                <span class="console-meta">支持格式: PDF, MD, TXT</span>
+                <span class="console-label">01 / Source Documents</span>
+                <span class="console-meta">Supported formats: PDF, MD, TXT</span>
               </div>
               
               <div 
@@ -148,8 +132,8 @@
                 
                 <div v-if="files.length === 0" class="upload-placeholder">
                   <div class="upload-icon">↑</div>
-                  <div class="upload-title">拖拽文件上传</div>
-                  <div class="upload-hint">或点击浏览文件系统</div>
+                  <div class="upload-title">Drag & drop files</div>
+                  <div class="upload-hint">or click to browse</div>
                 </div>
                 
                 <div v-else class="file-list">
@@ -164,23 +148,23 @@
 
             <!-- 分割线 -->
             <div class="console-divider">
-              <span>输入参数</span>
+              <span>Parameters</span>
             </div>
 
             <!-- 输入区域 -->
             <div class="console-section">
               <div class="console-header">
-                <span class="console-label">>_ 02 / 模拟提示词</span>
+                <span class="console-label">>_ 02 / Simulation Prompt</span>
               </div>
               <div class="input-wrapper">
                 <textarea
                   v-model="formData.simulationRequirement"
                   class="code-input"
-                  placeholder="// 用自然语言输入模拟或预测需求（例.武大若发布撤销肖某处分的公告，会引发什么舆情走向）"
+                  placeholder="// Describe what you want to simulate in natural language (e.g. If a startup launches with this positioning, how will early adopters react on social media?)"
                   rows="6"
                   :disabled="loading"
                 ></textarea>
-                <div class="model-badge">引擎: MiroFish-V1.0</div>
+                <div class="model-badge">Engine: Redline-V1.0</div>
               </div>
             </div>
 
@@ -191,8 +175,8 @@
                 @click="startSimulation"
                 :disabled="!canSubmit || loading"
               >
-                <span v-if="!loading">启动引擎</span>
-                <span v-else>初始化中...</span>
+                <span v-if="!loading">Launch</span>
+                <span v-else>Initializing...</span>
                 <span class="btn-arrow">→</span>
               </button>
             </div>
@@ -210,6 +194,7 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import HistoryDatabase from '../components/HistoryDatabase.vue'
+import { setPendingUpload } from '../store/pendingUpload'
 
 const router = useRouter()
 
@@ -288,20 +273,11 @@ const scrollToBottom = () => {
   })
 }
 
-// 开始模拟 - 立即跳转，API调用在Process页面进行
+// Store files then navigate immediately to Upload stage
 const startSimulation = () => {
   if (!canSubmit.value || loading.value) return
-  
-  // 存储待上传的数据
-  import('../store/pendingUpload.js').then(({ setPendingUpload }) => {
-    setPendingUpload(files.value, formData.value.simulationRequirement)
-    
-    // 立即跳转到Process页面（使用特殊标识表示新建项目）
-    router.push({
-      name: 'Process',
-      params: { projectId: 'new' }
-    })
-  })
+  setPendingUpload(files.value, formData.value.simulationRequirement)
+  router.push({ name: 'Upload', params: { projectId: 'new' } })
 }
 </script>
 
@@ -510,9 +486,15 @@ const startSimulation = () => {
   padding-right: 40px;
 }
 
-.hero-logo {
-  max-width: 500px; /* 调整logo大小 */
-  width: 100%;
+.hero-logo-text {
+  font-family: var(--font-mono);
+  font-size: 12rem;
+  font-weight: 800;
+  color: var(--black);
+  line-height: 1;
+  letter-spacing: -8px;
+  opacity: 0.08;
+  user-select: none;
 }
 
 .scroll-down-btn {
@@ -882,8 +864,8 @@ const startSimulation = () => {
     margin-bottom: 40px;
   }
   
-  .hero-logo {
-    max-width: 200px;
+  .hero-logo-text {
+    font-size: 6rem;
     margin-bottom: 20px;
   }
 }

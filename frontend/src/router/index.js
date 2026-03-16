@@ -1,10 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
-import Process from '../views/MainView.vue'
-import SimulationView from '../views/SimulationView.vue'
-import SimulationRunView from '../views/SimulationRunView.vue'
-import ReportView from '../views/ReportView.vue'
-import InteractionView from '../views/InteractionView.vue'
+import UploadView from '../views/UploadView.vue'
+import SimulateView from '../views/SimulateView.vue'
+import ExploreView from '../views/ExploreView.vue'
 
 const routes = [
   {
@@ -13,33 +11,21 @@ const routes = [
     component: Home
   },
   {
-    path: '/process/:projectId',
-    name: 'Process',
-    component: Process,
+    path: '/upload/:projectId',
+    name: 'Upload',
+    component: UploadView,
     props: true
   },
   {
-    path: '/simulation/:simulationId',
-    name: 'Simulation',
-    component: SimulationView,
+    path: '/simulate/:simulationId',
+    name: 'Simulate',
+    component: SimulateView,
     props: true
   },
   {
-    path: '/simulation/:simulationId/start',
-    name: 'SimulationRun',
-    component: SimulationRunView,
-    props: true
-  },
-  {
-    path: '/report/:reportId',
-    name: 'Report',
-    component: ReportView,
-    props: true
-  },
-  {
-    path: '/interaction/:reportId',
-    name: 'Interaction',
-    component: InteractionView,
+    path: '/explore/:reportId',
+    name: 'Explore',
+    component: ExploreView,
     props: true
   }
 ]
