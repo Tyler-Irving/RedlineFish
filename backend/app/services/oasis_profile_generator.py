@@ -817,7 +817,7 @@ class OasisProfileGenerator:
         completed_count = [0]  # list so closures can mutate it
         lock = Lock()
         
-        # 实时写入文件的辅助函数
+        # Helper function for real-time file writes
         def save_profiles_realtime():
             """Write all generated profiles so far to the output file."""
             if not realtime_output_path:
